@@ -22,6 +22,7 @@ function sanitizeArray(arr) {
   return arr.map(el => sanitizeString(el));
 }
 
+
 function SuperheroesDataComponent(){
   const [superheroes, setSuperheroes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +31,7 @@ React.useEffect(() => {
   const fetchSuperhero = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/superheroes');
+      const res = await fetch(`/api/superheroes/`);
       if (res.ok) {
         const data = await res.json();
         setSuperheroes(data);
@@ -48,8 +49,10 @@ React.useEffect(() => {
 
   fetchSuperhero();
 }, []); // Empty dependency array means this runs once on component mount
+/*
 return (
-  <div>
+ <div>
+  /*
     {isLoading ? (
       <p>Loading...</p>
     ) : error ? (
@@ -62,33 +65,99 @@ return (
       </ul>
     )}
   </div>
+  
 );
+*/
 }
 
+function SuperheroesSearch() {
+  // State declarations
+  const [searchTerm, setSearchTerm] = useState('');
+  const [category, setCategory] = useState('');
+  const [displayVolume, setDisplayVolume] = useState('');
+  const [searchPower, setSearchPower] = useState('');
+  const [categoryOrder, setCategoryOrder] = useState('');
+  const [results, setResults] = useState([]);
+  const [error, setError] = useState(null);
+console.log(category)  
 
-function ListNameChange() {
-  const [listName, setListName] = useState('');
 
-  const handleListNameChange = (e) => {
-    setListName(e.target.value);
+  const searchSuperheroes = () => {
+    const encodedSearchTerm = encodeURIComponent(searchTerm);
+    const encodedCategory = encodeURIComponent(category);
+    const encodedDisplayVolume = encodeURIComponent(displayVolume);
+console.log(category);
+
+
+        let url = '';
+    if (category === 'power') {
+      const encodedSearchPower = encodeURIComponent(searchPower);
+      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search/power?power=${encodedSearchPower}&n=${encodedDisplayVolume}`;
+    } else if (category === 'ids') {
+      const encodedConverter = encodeURIComponent(parseInt(searchTerm, 10));
+      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/${encodedConverter}/powers`;
+    } else{
+      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&pattern=${encodedSearchTerm}&n=${encodedDisplayVolume}`;
+      console.log(url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&pattern=${encodedSearchTerm}&n=${encodedDisplayVolume}`);
+    }
+    console.log(url);
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        setResults(data); // Assuming the data structure has a superheroes field
+      })
+      .catch(error => {
+        setError(error.message);
+      });
   };
-
+  console.log(results)
   return (
-    <input type="text" value={listName} onChange={handleListNameChange} />
-  );
+    <div>
+      <input 
+        type="text" 
+        value={searchTerm} 
+        onChange={(e) => setSearchTerm(e.target.value)} 
+        placeholder="Search Superheroes"
+      />
+      <input 
+        type="number" 
+        value={displayVolume} 
+        onChange={(e) => setDisplayVolume(e.target.value)} 
+        placeholder="Input Number Of Terms"
+      />
+   <select 
+  value={category} 
+  onChange={(e) => {
+    console.log("Category selected:", e.target.value);
+    setCategory(e.target.value);
+  }}>
+    <option value=""></option>
+  <option value="name">Name</option>
+  <option value="race">Race</option>
+  <option value="power">Power</option>
+  <option value="publisher">Publisher</option>
+</select>
+
+      <button onClick={searchSuperheroes}>Search</button>
+    
+      {error && <p>Error: {error}</p>}
+    
+      <div id="results">
+  {results && results.map(superhero => (
+    <div key={superhero.id}>
+     <p> Name: {superhero.name} Publisher: {superhero.Publisher}</p>
+    </div>
+  ))}
+</div>
+
+    </div>
+  );      
 }
 
-function MyComponent() {
-  const [superheroIdsInput, setSuperheroIdsInput] = useState('');
 
-  const handleSuperheroIdsChange = (e) => {
-    setSuperheroIdsInput(e.target.value);
-  };
 
-  return (
-    <input type="text" value={superheroIdsInput} onChange={handleSuperheroIdsChange} />
-  );
-}
+
 
 function SuperheroList() {
   const [superheroIdsInput, setSuperheroIdsInput] = useState('');
@@ -119,47 +188,11 @@ function SuperheroList() {
   );
 }
 
-function DeleteList() {
-  const [listReturn, setListReturn] = useState('');
-  const [deleteStatus, setDeleteStatus] = useState('');
-  const [error, setError] = useState(null); // Added this line
-
-  const handleDelete = async () => {
-    const encodedReturn = encodeURIComponent(listReturn);
-    const fetchList = {
-      method: 'DELETE',
-    };
-
-    fetch(`${process.env.REACT_APP_API_BASE_URL}/api/lists/${encodedReturn}`, fetchList)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Network response was not ok: ${response.statusText}`);
-        }
-        return response.json(); // Assuming the API always returns JSON
-      })
-      .then(data => {
-        setDeleteStatus('List deleted successfully');
-        console.log('Delete response:', data);
-      })
-      .catch(error => {
-        console.error('Fetch error:', error);
-        setError(error.message); // Now setError is defined
-      });
-  };
-
-  return (
-    <div>
-      <input type="text" value={listReturn} onChange={e => setListReturn(e.target.value)} />
-      <button onClick={handleDelete}>Delete List</button> {/* Corrected onClick handler */}
-      {deleteStatus && <p>{deleteStatus}</p>}
-      {error && <p>Error: {error}</p>} {/* Display error message if exists */}
-    </div>
-  );
-}
 
 
 
-function GetList() {
+
+function ListResults() {
   const [listReturn, setListReturn] = useState('');
   const [listSorter, setListSorter] = useState('ascending');
   const [attributeOrder, setAttributeOrder] = useState('');
@@ -167,10 +200,13 @@ function GetList() {
   const [superheroes, setSuperheroes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [deleteStatus, setDeleteStatus] = useState('');
+
+  const GetList= async () =>{
 
   useEffect(() => {
+    if (listObj === "GetList") {
     const fetchData = async () => {
-      if (listObj === "GetList") {
         setIsLoading(true);
         const encodedReturn = encodeURIComponent(listReturn);
         try {
@@ -199,16 +235,41 @@ function GetList() {
         } finally {
           setIsLoading(false);
         }
-      }
-    };
-
-    fetchData();
+      };
+      fetchData();
+    }
   }, [listReturn, listSorter, attributeOrder, listObj]);
-
+  }
+      const handleDelete = async () => {
+        const encodedReturn = encodeURIComponent(listReturn);
+        const fetchList = {
+          method: 'DELETE',
+        };
+    
+        fetch(`${process.env.REACT_APP_API_BASE_URL}/api/lists/${encodedReturn}`, fetchList)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Network response was not ok: ${response.statusText}`);
+            }
+            return response.json(); // Assuming the API always returns JSON
+          })
+          .then(data => {
+            setDeleteStatus('List deleted successfully');
+            console.log('Delete response:', data);
+          })
+          .catch(error => {
+            console.error('Fetch error:', error);
+            setError(error.message); // Now setError is defined
+          });
+    
+    }
   return (
     <div>
-      <input type="text" value={listReturn} onChange={e => setListReturn(e.target.value)} />
-      {/* Add other inputs here */}
+      <input type="text" value={listReturn} onChange={e => setListReturn(e.target.value)} placeholder='Enter List Name'/>
+      <button onClick={GetList}>Get List</button> {/* Corrected onClick handler */}
+      <button onClick={handleDelete}>Delete List</button> {/* Corrected onClick handler */}
+      {deleteStatus && <p>{deleteStatus}</p>}
+      {error && <p>Error: {error}</p>} {/* Display error message if exists */}
 
       {isLoading ? (
         <p>Loading...</p>
@@ -223,70 +284,15 @@ function GetList() {
           ))}
         </ul>
       )}
+    
     </div>
+    
   );
+
 }
 
 
 
-function SuperheroesSearch() {
-  // State declarations
-  const [searchTerm, setSearchTerm] = useState('');
-  const [category, setCategory] = useState('');
-  const [displayVolume, setDisplayVolume] = useState('');
-  const [searchPower, setSearchPower] = useState('');
-  const [categoryOrder, setCategoryOrder] = useState('');
-  const [results, setResults] = useState([]);
-  const [error, setError] = useState(null);
-
-  const searchSuperheroes = () => {
-    const encodedSearchTerm = encodeURIComponent(searchTerm);
-    const encodedCategory = encodeURIComponent(category);
-    const encodedDisplayVolume = encodeURIComponent(displayVolume);
-  
-    let url = '';
-    if (category === 'power') {
-      const encodedSearchPower = encodeURIComponent(searchPower);
-      url = `api/superheroes/search/power?power=${encodedSearchPower}&n=${encodedDisplayVolume}`;
-    } else if (category === 'ids') {
-      const encodedConverter = encodeURIComponent(parseInt(searchTerm, 10));
-      url = `api/superheroes/${encodedConverter}/powers`;
-    } else {
-      url = `api/superheroes/search?field=${encodedCategory}&pattern=${encodedSearchTerm}&n=${encodedDisplayVolume}`;
-    }
-  
-    fetch(url)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Network response was not ok: ${response.statusText}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        setResults(data.superheroes); // Assuming the data structure has a superheroes field
-      })
-      .catch(error => {
-        setError(error.message);
-      });
-      return (
-        <div>
-          {/* Input fields for searchTerm, category, displayVolume, etc. */}
-          <button onClick={searchSuperheroes}>Search</button>
-      
-          {error && <p>Error: {error}</p>}
-      
-          <div id="results">
-            {results.map(superhero => (
-              <div key={superhero.id}>
-                {/* Render each superhero's details */}
-                Name: {superhero.name}, {/* other details */}
-              </div>
-            ))}
-          </div>
-        </div>
-      );      
-  };
-}
 function DisplayResults() {
   const [superheroes, setSuperheroes] = useState([]);
 
@@ -322,7 +328,7 @@ function GetAllPublishersComponent() {
   const [publishers, setPublishers] = useState([]);
   const [error, setError] = useState(null);
   const fetchPublishers = () => {
-    fetch('/api/superheroes/publishers')
+    fetch(`${process.env.REACT_APP_API_BASE_URL}/api/superheroes/publishers`)
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -353,7 +359,7 @@ function GetAllPublishersComponent() {
   };
 }
 
-export { MyComponent, GetList, DeleteList, SuperheroesDataComponent, SuperheroList, SuperheroesSearch, ListNameChange, DisplayResults, GetAllPublishersComponent};
+export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent};
 
 
 /*
@@ -453,4 +459,23 @@ const encodedlistName = encodeURIComponent(listName);
         // Fetch the updated list
       });
   }
+  */
+ /* <select 
+  value={category} 
+  onChange={(e) => setCategory(e.target.value)}>
+  <option value="">Select Category</option>
+
+function MyComponent() {
+  const [superheroIdsInput, setSuperheroIdsInput] = useState('');
+
+  const handleSuperheroIdsChange = (e) => {
+    setSuperheroIdsInput(e.target.value);
+  };
+
+  return (
+    <input type="text" value={superheroIdsInput} onChange={handleSuperheroIdsChange} />
+  );
+}
+
+
   */
