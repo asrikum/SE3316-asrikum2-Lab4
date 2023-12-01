@@ -73,32 +73,41 @@ return (
 function SuperheroesSearch() {
   // State declarations
   const [searchTerm, setSearchTerm] = useState('');
+  const [secondsearchTerm, setSecondSearchTerm] = useState('');
   const [category, setCategory] = useState('');
+  const [secondcategory, setSecondCategory] = useState('');
   const [displayVolume, setDisplayVolume] = useState('');
   const [searchPower, setSearchPower] = useState('');
   const [categoryOrder, setCategoryOrder] = useState('');
   const [results, setResults] = useState([]);
+  const [selectedSuperheroId, setSelectedSuperheroId] = useState(null);
   const [error, setError] = useState(null);
+
 console.log(category)  
 
+const handleSuperheroSelect = (results) => {
+  setSelectedSuperheroId(results);
+};
 
   const searchSuperheroes = () => {
     const encodedSearchTerm = encodeURIComponent(searchTerm);
     const encodedCategory = encodeURIComponent(category);
     const encodedDisplayVolume = encodeURIComponent(displayVolume);
+    const encodedsecondsearchTerm = encodeURIComponent(secondsearchTerm);
+    const encodedsecondcategory = encodeURIComponent(secondcategory);
 console.log(category);
 
 
         let url = '';
     if (category === 'power') {
       const encodedSearchPower = encodeURIComponent(searchPower);
-      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search/power?power=${encodedSearchPower}&n=${encodedDisplayVolume}`;
+      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search/power?power=${encodedSearchTerm}&second=${encodedsecondcategory}&pattern=${encodedsecondsearchTerm}&n=${encodedDisplayVolume}`;
     } else if (category === 'ids') {
       const encodedConverter = encodeURIComponent(parseInt(searchTerm, 10));
       url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/${encodedConverter}/powers`;
     } else{
-      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&pattern=${encodedSearchTerm}&n=${encodedDisplayVolume}`;
-      console.log(url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&pattern=${encodedSearchTerm}&n=${encodedDisplayVolume}`);
+      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&second=${encodedsecondcategory}&pattern=${encodedSearchTerm}&secondpattern=${secondsearchTerm}&n=${encodedDisplayVolume}`;
+      console.log(url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&second=${encodedsecondcategory}&pattern=${encodedSearchTerm}&secondpattern=${secondsearchTerm}&n=${encodedDisplayVolume}`);
     }
     console.log(url);
     fetch(url)
@@ -114,11 +123,18 @@ console.log(category);
   console.log(results)
   return (
     <div>
-      <input 
+      <input  
         type="text" 
         value={searchTerm} 
+        
         onChange={(e) => setSearchTerm(e.target.value)} 
         placeholder="Search Superheroes"
+      />
+      <input 
+        type="text" 
+        value={secondsearchTerm} 
+        onChange={(e) => setSecondSearchTerm(e.target.value)} 
+        placeholder="Second Superhero Search"
       />
       <input 
         type="number" 
@@ -134,22 +150,67 @@ console.log(category);
   }}>
     <option value=""></option>
   <option value="name">Name</option>
-  <option value="race">Race</option>
+  <option value="Race">Race</option>
   <option value="power">Power</option>
-  <option value="publisher">Publisher</option>
+  <option value="Publisher">Publisher</option>
+</select>
+
+<select 
+  value={secondcategory} 
+  onChange={(e) => {
+    console.log("Category selected:", e.target.value);
+    setSecondCategory(e.target.value);
+  }}>
+    <option value=""></option>
+  <option value="name">Name</option>
+  <option value="Race">Race</option>
+  <option value="power">Power</option>
+  <option value="Publisher">Publisher</option>
 </select>
 
       <button onClick={searchSuperheroes}>Search</button>
     
       {error && <p>Error: {error}</p>}
-    
+
       <div id="results">
-  {results && results.map(superhero => (
-    <div key={superhero.id}>
-     <p> Name: {superhero.name} Publisher: {superhero.Publisher}</p>
-    </div>
-  ))}
-</div>
+        {results && results.map(superhero => (
+          <div key={superhero.id}>
+            <p> 
+              Name: {superhero.name} Publisher: {superhero.Publisher}
+              <button onClick={() => handleSuperheroSelect(superhero.id)}>Extend</button>
+            </p>
+            
+            {selectedSuperheroId === superhero.id && (category==="name" || category==="Race" || category==="Publisher")&&
+              <div>
+                <p>Gender: {superhero.Gender}</p>
+                <p>Eye Color: {superhero["Eye color"]}</p>
+                <p>race: {superhero.Race}</p>
+                <p>Hair: {superhero["Hair color"]}</p>
+                <p>Height: {superhero.Height}</p>
+                <p>Publisher:{superhero.Publisher}</p>
+                <p>Skin: {superhero["Skin color"]}</p>
+                <p>Alignment: {superhero.Alignment}</p>
+                <p>Weight: {superhero.Weight}</p>
+              </div>
+            }
+            {selectedSuperheroId === superhero.id && category==="power" &&
+              <div>
+                <p>Gender: {superhero.Gender}</p>
+                <p>Eye Color: {superhero.Eye}</p>
+                <p>race: {superhero.Race}</p>
+                <p>Hair: {superhero.Hair}</p>
+                <p>Height: {superhero.Height}</p>
+                <p>Publisher:{superhero.Publisher}</p>
+                <p>Skin: {superhero.Skin}</p>
+                <p>Alignment: {superhero.Alignment}</p>
+                <p>Weight: {superhero.Weight}</p>
+                <p>Powers:{superhero.powers}</p>
+              </div>
+            }
+          </div>
+        ))}
+        
+      </div>
 
     </div>
   );      
@@ -360,122 +421,3 @@ function GetAllPublishersComponent() {
 }
 
 export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent};
-
-
-/*
-const handleSearchClick = () => {
- // Get the current value of the input and select elements
- const displayn = sanitizeNumber(displayvolume.toLowerCase());
- const searchTerm = sanitizeString(sea.value.toLowerCase());
- const searchpower = sanitizeString(searchTermInput.value);
- const category = categorySelect.value;
- const catsorter = categoryorder.value;
- const displayvolume = parseInt(displayn);
- console.log(searchTerm, category, displayvolume, searchpower); // Log the search term and category for debugging
-
- // Call the search function with the current search term and category
- searchSuperheroes(searchTerm, category, displayvolume, searchpower, catsorter);
-  };
-  
-  const handleSubmitList = () => {
-    const listVal = listName.value;
-    const ids = superhero_ids.value.split(',').map(id => parseInt(id.trim(), 10)); // Convert string of IDs into an array of numbers
-    createSuperheroList(listVal, ids);
-    console.log(ids)
-  };
-  
-  const handleListReturn = () => {
-    const listreturnsi = sanitizeString(listreturn.value);
-    const listsorter = listorder.value;
-    const attributeorder = attributeSelect.value;
-    const list_obj= list_objective.value;
-    getSuperheroList(listreturnsi, listsorter, attributeorder, list_obj);
-  };
-  */
-
-  /*
-const [searchTerm, setSearchTerm] = useState('');//searchTermInput
-const [category, setCategory] = useState('');//categorySelect
-const [displayVolume, setDisplayVolume] = useState('');//displayvol
-const [listName, setListName] = useState('');//listName
-const [superheroIds, setSuperheroIds] = useState('');//superhero_ids
-const [listReturn, setListReturn] = useState('');//listreturn
-const [categoryOrder, setCategoryOrder] = useState('');//categoryorder
-const [listOrder, setListOrder] = useState('');//listorder
-const [listObjective, setListObjective] = useState('');//list_objective
-const [attribute, setAttribute] = useState('');//attributeSelect
-const [results, setResults] = useState([]);//div id for showing the content provided
-const [superheroes, setSuperheroes] = React.useState([]);
-const [isLoading, setIsLoading] = React.useState(false);
-const [error, setError] = React.useState(null);
-const [deleteStatus, setDeleteStatus] = React.useState('');
-const [searchPower, setSearchPower] = React.useState('');
-const [publishers, setPublishers] = React.useState([]);
-const searchButton = document.getElementById("submit");
-const submitlistButton = document.getElementById("submitlist");
-const searchTermInput = document.getElementById("searchTerm");
-const showpublishers = document.getElementById('submitpublishers');
-*/
-
-/*
-    const fetchList = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ listName }) // Assuming the server expects an object with a key 'listName'
-    };
-//input Sanitization before fetching
-    fetch('/api/lists', fetchList)
-      .then(response => {
-        if (!response.ok) {
-            herocontent.innerHTML='List Exists';
-          throw new Error('Network response was not ok ' + response.statusText);
-        }
-        return response.json(); // Parse JSON response into JavaScript object
-      })
-      .then(data => {
-        herocontent.innerHTML='List Created';
-        console.log('List created:', data); // Handle the response data
-  
-        // Now, add superhero IDs to the list
-        const fetchIDs = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({superheroIds}) // Assuming the server expects an object with a key 'superhero_ids'
-        };
-  console.log(JSON.stringify(superheroIds ));
-//input Sanitization before fetching
-  
-const encodedlistName = encodeURIComponent(listName);
-        return fetch(`/api/lists/${encodedlistName}`, fetchIDs); // Adjust the endpoint as per your API
-      })
-      .then(response => {
-        if (!response.ok) {  
-          throw new Error('Network response was not ok ' + response.statusText);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('Superhero IDs added:', data); // Handle the response data
-        // Fetch the updated list
-      });
-  }
-  */
- /* <select 
-  value={category} 
-  onChange={(e) => setCategory(e.target.value)}>
-  <option value="">Select Category</option>
-
-function MyComponent() {
-  const [superheroIdsInput, setSuperheroIdsInput] = useState('');
-
-  const handleSuperheroIdsChange = (e) => {
-    setSuperheroIdsInput(e.target.value);
-  };
-
-  return (
-    <input type="text" value={superheroIdsInput} onChange={handleSuperheroIdsChange} />
-  );
-}
-
-
-  */
