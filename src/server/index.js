@@ -89,9 +89,9 @@ router.get('/search/power', async (req, res) => {
         powers: powers,
         name: sh.name, 
         id: sh.id, 
-        gender: sh.Gender,
-        Eye_Color: sh["Eye color"],
-        race: sh.Race,
+        Gender: sh.Gender,
+        Eye: sh["Eye color"],
+        Race: sh.Race,
         Hair: sh["Hair color"],
         Height: sh.Height,
         Publisher: sh.Publisher,
@@ -239,7 +239,8 @@ router.get('/search', [
   }
 
   // Perform the search with case-insensitive matching
-  const regex = new RegExp(pattern, 'i');
+  const softPattern = pattern.replace(/\s+/g, '').toLowerCase();
+  const regex = new RegExp(softPattern, 'i');
   
   const secondRegex = new RegExp(secondpattern, 'i');
  console.log(second);
@@ -487,5 +488,3 @@ app.delete('/api/lists/:listName', (req, res) => {
 const port = process.env.PORT || 4000;// sets an arbritrary port value instead of 3000 as 3000 is more likely to be busy 
 app.listen(port, () => console.log(`Listening on port ${port}...`));// sends to local port
 // the / represents the connection to the site(Path or Url), response and request
-
-//hi
