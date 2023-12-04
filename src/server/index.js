@@ -331,9 +331,13 @@ app.post('/api/lists', async(req, res)=>{
 
 app.post('/api/lists/:listName', async (req, res) => {
   const { listName } = req.params;
-  const { superheroIds, nickname, rating } = req.body;
+  const { superheroIds, description, visibility = 'private', nickname } = req.body;
 
-  if (!Array.isArray(superheroIds) || typeof nickname !== 'string' || typeof rating !== 'number') {
+  // Validation
+  if (!Array.isArray(superheroIds) || 
+      (description && typeof description !== 'string') || 
+      (visibility && !['public', 'private'].includes(visibility)) || 
+      (nickname && typeof nickname !== 'string')) {
     return res.status(400).send('Invalid input data.');
   }
 
@@ -342,17 +346,16 @@ app.post('/api/lists/:listName', async (req, res) => {
   if (list) {
     // Update existing list
     list.superheroes = [...new Set([...list.superheroes, ...superheroIds])]; // Combine and deduplicate IDs
-    list.nickname = nickname; // Update nickname
-    if (!Array.isArray(list.ratings)) {
-      list.ratings = [];
-    }
-    list.ratings.push(rating); // Add new rating
+    list.description = description || list.description; // Update description if provided
+    list.visibility = visibility; // Update visibility
+    list.nickname = nickname || list.nickname; // Update nickname if provided
   } else {
-    // Create a new list
+    // Create a new list with default visibility set to 'private'
     list = {
       superheroes: superheroIds,
-      nickname,
-      ratings: [rating]
+      description: description || '', // Set description if provided
+      visibility: visibility, // Set visibility
+      nickname: nickname || '' // Set nickname if provided
     };
   }
 
@@ -369,6 +372,7 @@ app.post('/api/lists/:listName', async (req, res) => {
 });
 
 
+
 app.get('/api/lists/:listName', async (req, res) => {
   try {
     const { listName } = req.params;
@@ -378,80 +382,53 @@ app.get('/api/lists/:listName', async (req, res) => {
     }
 
     const list = db.get(`lists.${listName}`).value();
-    
+
+    // Check if the superheroes array exists and is an array
     if (!list.superheroes || !Array.isArray(list.superheroes)) {
       return res.status(500).send('Invalid list structure.');
     }
-    // Retrieve the current list from the database
+
     let superheroDetails = [];
     for (let heroId of list.superheroes) {
       const superhero = superhero_pub.find(sh => sh.id === heroId);
       if (superhero) {
-
-    console.log(superhero.name);
-    console.log(superhero.Gender);
-    if (superhero) {
-      const superheropowers = superheroes.find(sh => sh.hero_names === superhero.name);
-      if (superheropowers) {
-        const powers = Object.entries(superheropowers)
+        const superheropowers = superheroes.find(sh => sh.hero_names === superhero.name);
+        const powers = superheropowers ? Object.entries(superheropowers)
           .filter(([key, value]) => value === "True" && key !== "hero_names")
-          .map(([key]) => key);
-          let eyeColor = superhero["Eye color"];
-          let skin = superhero["Skin color"];
-          let Hair = superhero["Hair color"];
+          .map(([key]) => key) : [];
+
         superheroDetails.push({
           id: heroId,
           name: superhero.name,
           gender: superhero.Gender,
-          Eye_Color: eyeColor,
-          race:superhero.Race,
-          Hair:Hair,
+          Eye_Color: superhero["Eye color"],
+          race: superhero.Race,
+          Hair: superhero["Hair color"],
           Height: superhero.Height,
-          Publisher:superhero.Publisher,
-          Skin: skin,
-          Alignment:superhero.Alignment,
+          Publisher: superhero.Publisher,
+          Skin: superhero["Skin color"],
+          Alignment: superhero.Alignment,
           Weight: superhero.Weight,
           powers: powers,
-
-          
-        });
-      } else {
-        let eyeColor = superhero["Eye color"];
-          let skin = superhero["Skin color"];
-          let Hair = superhero["Hair color"];
-        superheroDetails.push({
-          
-          id: heroId,
-          name: superhero.name,
-          gender: superhero.Gender,
-          Eye_Color: eyeColor,
-          race:superhero.Race,
-          Hair:superhero.Hair,
-          Height: superhero.Height,
-          Publisher:superhero.Publisher,
-          Skin: skin,
-          Alignment:superhero.Alignment,
-          Weight: superhero.Weight,
-          powers: [] // No powers found
         });
       }
     }
+
+    res.status(200).json({
+      message: 'Superhero details fetched successfully.',
+      listName: listName,
+      description: list.description || 'No description provided',
+      visibility: list.visibility || 'private',
+      superheroes: superheroDetails,
+      lastModified: db.get(`lastModified.${listName}`).value(),
+    });
+
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).send('Server error');
   }
-}
-
-  res.status(200).json({
-    message: 'Superhero details fetched successfully.',
-    Modification: db.get(`lastModified.${listName}`).value(),
-    list: db.get(`lists.${listName}`).value(),
-    superheroes: superheroDetails,
-    
-  });
-
-} catch (error) {
-  console.error('Server error:', error);
-  res.status(500).send('Server error');
-}
 });
+
 
 
 app.get('/api/lists', async (req, res) => {
@@ -465,7 +442,7 @@ app.get('/api/lists', async (req, res) => {
       lastModified: lastModified[listName]
     }));
 
-    const sortedLists = listsArray.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified)).slice(0, 10);
+    const sortedLists = listsArray.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified)).slice(0, 20);
 
     const detailedLists = sortedLists.map(list => {
       let superheroDetails = [];
@@ -496,14 +473,16 @@ app.get('/api/lists', async (req, res) => {
         }
       }
 
-      const averageRating = list.ratings.length > 0 
+      const averageRating = list.ratings && list.ratings.length > 0 
                             ? list.ratings.reduce((a, b) => a + b, 0) / list.ratings.length 
                             : 0;
 
       return {
         ...list,
         superheroes: superheroDetails,
-        averageRating
+        averageRating,
+        description: list.description || 'No description provided',
+        visibility: list.visibility || 'private'
       };
     });
 
