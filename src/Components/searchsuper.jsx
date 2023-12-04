@@ -296,8 +296,9 @@ function HeroLists() {
             <button onClick={() => handleFullDetailsClick(list.name)}>
               {fullDetailsList === list.name ? 'Hide All Info' : 'Show All Info'}
             </button>
-            <p>Nickname: {list.nickname}</p>
-            <p>Number of Heroes: {list.numberOfHeroes}</p>
+            <p>Description: {list.description || 'No description available'}</p>
+            <p>Visibility: {list.visibility.charAt(0).toUpperCase() + list.visibility.slice(1)}</p>
+            <p>Number of Heroes: {list.superheroes.length}</p>
             <p>Average Rating: {list.averageRating.toFixed(1)}</p>
             <p>Last Modified: {new Date(list.lastModified).toLocaleDateString()}</p>
             {expandedList === list.name && (
@@ -315,17 +316,16 @@ function HeroLists() {
               <div>
                 {list.superheroes.map((hero, index) => (
                   <div key={index}>
-                    {/* Add additional details for each superhero here */}
-                    <p>Gender: {hero.Gender}</p>
-                    <p>Eye Color: {hero["Eye color"]}</p>
-                    <p>Race: {hero.Race}</p>
-                    <p>Hair: {hero["Hair color"]}</p>
+                    <p>Gender: {hero.gender}</p>
+                    <p>Eye Color: {hero.Eye_Color}</p>
+                    <p>Race: {hero.race}</p>
+                    <p>Hair: {hero.Hair}</p>
                     <p>Height: {hero.Height}</p>
                     <p>Publisher: {hero.Publisher}</p>
-                    <p>Skin: {hero["Skin color"]}</p>
+                    <p>Skin: {hero.Skin}</p>
                     <p>Alignment: {hero.Alignment}</p>
                     <p>Weight: {hero.Weight}</p>
-                    <p>Powers: {hero.powers}</p>
+                    <p>Powers: {hero.powers.join(', ')}</p>
                   </div>
                 ))}
               </div>
@@ -338,23 +338,23 @@ function HeroLists() {
 }
 
 
+
 function ListForm() {
   const [listName, setListName] = useState('');
   const [superheroIds, setSuperheroIds] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [rating, setRating] = useState('');
+  const [description, setDescription] = useState('');
+  const [visibility, setVisibility] = useState('private');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const idsArray = superheroIds.split(',').map(id => parseInt(id.trim(), 10));
-    const ratingValue = parseFloat(rating);
 
     try {
       const response = await axios.post(`http://localhost:4000/api/lists/${listName}`, {
         superheroIds: idsArray,
-        nickname,
-        rating: ratingValue
+        description,
+        visibility
       });
       console.log(response.data);
       alert('List updated successfully!');
@@ -380,22 +380,16 @@ function ListForm() {
         placeholder="Superhero IDs (comma-separated)"
         required
       />
-      <input
-        type="text"
-        value={nickname}
-        onChange={(e) => setNickname(e.target.value)}
-        placeholder="Nickname"
-        required
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Description (optional)"
       />
-      <input
-        type="number"
-        value={rating}
-        onChange={(e) => setRating(e.target.value)}
-        placeholder="Rating"
-        step="0.1"
-        required
-      />
-      <button type="submit">Update List</button>
+      <select value={visibility} onChange={(e) => setVisibility(e.target.value)}>
+        <option value="private">Private</option>
+        <option value="public">Public</option>
+      </select>
+      <button type="submit">Create/Update List</button>
     </form>
   );
 }
