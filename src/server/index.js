@@ -453,6 +453,71 @@ app.get('/api/lists/:listName', async (req, res) => {
 }
 });
 
+
+app.get('/api/lists', async (req, res) => {
+  try {
+    const lists = db.get('lists').value();
+    const lastModified = db.get('lastModified').value();
+
+    const listsArray = Object.entries(lists).map(([listName, listData]) => ({
+      name: listName,
+      ...listData,
+      lastModified: lastModified[listName]
+    }));
+
+    const sortedLists = listsArray.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified)).slice(0, 10);
+
+    const detailedLists = sortedLists.map(list => {
+      let superheroDetails = [];
+      if (list.superheroes && Array.isArray(list.superheroes)) {
+        for (let heroId of list.superheroes) {
+          const superhero = superhero_pub.find(sh => sh.id === heroId);
+          if (superhero) {
+            const superheropowers = superheroes.find(sh => sh.hero_names === superhero.name);
+            const powers = superheropowers ? Object.entries(superheropowers)
+              .filter(([key, value]) => value === "True" && key !== "hero_names")
+              .map(([key]) => key) : [];
+
+            superheroDetails.push({
+              id: heroId,
+              name: superhero.name,
+              gender: superhero.Gender,
+              Eye_Color: superhero["Eye color"],
+              race: superhero.Race,
+              Hair: superhero["Hair color"],
+              Height: superhero.Height,
+              Publisher: superhero.Publisher,
+              Skin: superhero["Skin color"],
+              Alignment: superhero.Alignment,
+              Weight: superhero.Weight,
+              powers: powers,
+            });
+          }
+        }
+      }
+
+      const averageRating = list.ratings.length > 0 
+                            ? list.ratings.reduce((a, b) => a + b, 0) / list.ratings.length 
+                            : 0;
+
+      return {
+        ...list,
+        superheroes: superheroDetails,
+        averageRating
+      };
+    });
+
+    res.status(200).json(detailedLists);
+
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).send('Server error');
+  }
+});
+
+        
+
+
 app.delete('/api/lists/:listName', (req, res) => {
   try {
     // Extract the listName from the request parameters
