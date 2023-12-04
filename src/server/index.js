@@ -319,7 +319,8 @@ app.post('/api/lists', async(req, res)=>{
   // Return the newly created list
   res.status(201).json({
       message: 'New list created successfully.',
-      listName: listName
+      listName: listName,
+
       
   });
 }catch (error) {
@@ -329,76 +330,63 @@ app.post('/api/lists', async(req, res)=>{
 });
 
 app.post('/api/lists/:listName', async (req, res) => {
-  // Extract the list name from the URL parameters
   const { listName } = req.params;
+  const { superheroIds, nickname, rating } = req.body;
 
-  // Extract the superhero IDs from the request body
-  const { superheroIds } = req.body;
-
-  // Check if the list name already exists
-  const listExists = db.has(`lists.${listName}`).value();
-
-  if (!listExists) {
-      // If the list name does not exist, return an error
-      return res.status(404).send('List name does not exist.');
+  if (!Array.isArray(superheroIds) || typeof nickname !== 'string' || typeof rating !== 'number') {
+    return res.status(400).send('Invalid input data.');
   }
 
-  // Check if the superhero IDs are provided and are in an array
-  if (!Array.isArray(superheroIds)) {
-      return res.status(400).send('Superhero IDs must be an array.');
+  let list = db.get(`lists.${listName}`).value();
+
+  if (list) {
+    // Update existing list
+    list.superheroes = [...new Set([...list.superheroes, ...superheroIds])]; // Combine and deduplicate IDs
+    list.nickname = nickname; // Update nickname
+    if (!Array.isArray(list.ratings)) {
+      list.ratings = [];
+    }
+    list.ratings.push(rating); // Add new rating
+  } else {
+    // Create a new list
+    list = {
+      superheroes: superheroIds,
+      nickname,
+      ratings: [rating]
+    };
   }
 
-  // Add superhero IDs to the existing list
-  const updatedList = [...superheroIds];
-  const uniqueElementsSet = new Set(updatedList);
-const numberOfUniqueElements = uniqueElementsSet.size;
-console.log(uniqueElementsSet);
-const uniqueElementsArray = Array.from(uniqueElementsSet);
-for(let i =0; i< numberOfUniqueElements; i++){
-const listheroes = uniqueElementsArray[i];  
-console.log(listheroes);
- const superhero = superhero_pub.find(sh => sh.id === listheroes);
-  console.log(superhero);
-};
-  // Update the list in the database
-  db.set(`lists.${listName}`, updatedList).write();
+  // Update the list and last modified date in the database
+  db.set(`lists.${listName}`, list)
+    .set(`lastModified.${listName}`, new Date().toISOString())
+    .write();
 
-  // Return the updated list
   res.status(200).json({
-      message: 'Superhero IDs added to the list successfully.',
-      list: updatedList
+    message: 'List updated successfully',
+    list: db.get(`lists.${listName}`).value(),
+    lastModified: db.get(`lastModified.${listName}`).value()
   });
 });
 
+
 app.get('/api/lists/:listName', async (req, res) => {
   try {
-    // Extract the listName from the request parameters
     const { listName } = req.params;
 
-    // Check if the list name exists in the database
-    const listExists = db.has(`lists.${listName}`).value();
-
-    if (!listExists) {
-      // If the list name does not exist, return an error
+    if (!db.has(`lists.${listName}`).value()) {
       return res.status(404).send('List name does not exist.');
     }
+
+    const list = db.get(`lists.${listName}`).value();
+    
+    if (!list.superheroes || !Array.isArray(list.superheroes)) {
+      return res.status(500).send('Invalid list structure.');
+    }
     // Retrieve the current list from the database
-    const currentList = db.get(`lists.${listName}`).value();
     let superheroDetails = [];
-    const uniqueElementsSet = new Set(currentList);
-    const numberOfUniqueElements = uniqueElementsSet.size;
-    console.log(uniqueElementsSet);
-    const uniqueElementsArray = Array.from(uniqueElementsSet);
-    let superheroarray = [];
-    let superheroespowers= [];
-    for(let i =0; i< numberOfUniqueElements; i++){
-    const listheroes = uniqueElementsArray[i];  
-    console.log(listheroes);
-    const superhero = superhero_pub.find(sh => sh.id === listheroes);
-    superheroarray.push(superhero);
-  }
-  for (let heroId of currentList) {
-    const superhero = superhero_pub.find(sh => sh.id === heroId);
+    for (let heroId of list.superheroes) {
+      const superhero = superhero_pub.find(sh => sh.id === heroId);
+      if (superhero) {
 
     console.log(superhero.name);
     console.log(superhero.Gender);
@@ -432,6 +420,7 @@ app.get('/api/lists/:listName', async (req, res) => {
           let skin = superhero["Skin color"];
           let Hair = superhero["Hair color"];
         superheroDetails.push({
+          
           id: heroId,
           name: superhero.name,
           gender: superhero.Gender,
@@ -448,10 +437,14 @@ app.get('/api/lists/:listName', async (req, res) => {
       }
     }
   }
+}
 
   res.status(200).json({
     message: 'Superhero details fetched successfully.',
-    superheroes: superheroDetails
+    Modification: db.get(`lastModified.${listName}`).value(),
+    list: db.get(`lists.${listName}`).value(),
+    superheroes: superheroDetails,
+    
   });
 
 } catch (error) {
