@@ -251,7 +251,8 @@ function SuperheroList() {
 }
 function HeroLists() {
   const [lists, setLists] = useState([]);
-  const [expandedList, setExpandedList] = useState(null); // Track which list is expanded
+  const [expandedList, setExpandedList] = useState(null); // Track expanded list for basic details
+  const [fullDetailsList, setFullDetailsList] = useState(null); // Track expanded list for full details
 
   useEffect(() => {
     const fetchData = async () => {
@@ -267,11 +268,18 @@ function HeroLists() {
   }, []);
 
   const handleExpandClick = (listName) => {
-    // Toggle expand state for the list
+    setExpandedList(expandedList === listName ? null : listName);
+    // Collapse full details if the same list is expanded/collapsed
+    if (fullDetailsList === listName) {
+      setFullDetailsList(null);
+    }
+  };
+
+  const handleFullDetailsClick = (listName) => {
+    setFullDetailsList(fullDetailsList === listName ? null : listName);
+    // Collapse basic details if the same list is expanded/collapsed
     if (expandedList === listName) {
-      setExpandedList(null); // Collapse if it's already expanded
-    } else {
-      setExpandedList(listName); // Expand the selected list
+      setExpandedList(null);
     }
   };
 
@@ -284,6 +292,9 @@ function HeroLists() {
             <h2>{list.name}</h2>
             <button onClick={() => handleExpandClick(list.name)}>
               {expandedList === list.name ? 'Hide Details' : 'Show Details'}
+            </button>
+            <button onClick={() => handleFullDetailsClick(list.name)}>
+              {fullDetailsList === list.name ? 'Hide All Info' : 'Show All Info'}
             </button>
             <p>Nickname: {list.nickname}</p>
             <p>Number of Heroes: {list.numberOfHeroes}</p>
@@ -300,14 +311,31 @@ function HeroLists() {
                 ))}
               </div>
             )}
+            {fullDetailsList === list.name && (
+              <div>
+                {list.superheroes.map((hero, index) => (
+                  <div key={index}>
+                    {/* Add additional details for each superhero here */}
+                    <p>Gender: {hero.Gender}</p>
+                    <p>Eye Color: {hero["Eye color"]}</p>
+                    <p>Race: {hero.Race}</p>
+                    <p>Hair: {hero["Hair color"]}</p>
+                    <p>Height: {hero.Height}</p>
+                    <p>Publisher: {hero.Publisher}</p>
+                    <p>Skin: {hero["Skin color"]}</p>
+                    <p>Alignment: {hero.Alignment}</p>
+                    <p>Weight: {hero.Weight}</p>
+                    <p>Powers: {hero.powers}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </li>
         ))}
       </ul>
     </div>
   );
 }
-
-
 
 
 function ListForm() {
