@@ -2,6 +2,7 @@
 // Get the search button and input elements from the DOM
 import React, { useState, useEffect } from 'react';
 import './LoginSignup.css'
+import axios from 'axios';
 function sanitizeString(str) {
   return str.trim().replace(/[&<>"'/]/g, function (match) {
     return ({
@@ -101,13 +102,13 @@ console.log(category);
         let url = '';
     if (category === 'power') {
       const encodedSearchPower = encodeURIComponent(searchPower);
-      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search/power?power=${encodedSearchTerm}&second=${encodedsecondcategory}&pattern=${encodedsecondsearchTerm}&n=${encodedDisplayVolume}`;
+      url = `http://localhost:4000/api/superheroes/search/power?power=${encodedSearchTerm}&second=${encodedsecondcategory}&pattern=${encodedsecondsearchTerm}&n=${encodedDisplayVolume}`;
     } else if (category === 'ids') {
       const encodedConverter = encodeURIComponent(parseInt(searchTerm, 10));
-      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/${encodedConverter}/powers`;
+      url = `http://localhost:4000/api/superheroes/${encodedConverter}/powers`;
     } else{
-      url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&second=${encodedsecondcategory}&pattern=${encodedSearchTerm}&secondpattern=${secondsearchTerm}&n=${encodedDisplayVolume}`;
-      console.log(url = `${process.env.REACT_APP_API_BASE_URL}/api/superheroes/search?field=${category}&second=${encodedsecondcategory}&pattern=${encodedSearchTerm}&secondpattern=${secondsearchTerm}&n=${encodedDisplayVolume}`);
+      url = `http://localhost:4000/api/superheroes/search?field=${category}&second=${encodedsecondcategory}&pattern=${encodedSearchTerm}&secondpattern=${secondsearchTerm}&n=${encodedDisplayVolume}`;
+      console.log(url = `http://localhost:4000/api/superheroes/search?field=${category}&second=${encodedsecondcategory}&pattern=${encodedSearchTerm}&secondpattern=${secondsearchTerm}&n=${encodedDisplayVolume}`);
     }
     console.log(url);
     fetch(url)
@@ -248,9 +249,128 @@ function SuperheroList() {
     </div>
   );
 }
+function HeroLists() {
+  const [lists, setLists] = useState([]);
+  const [expandedList, setExpandedList] = useState(null); // Track which list is expanded
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/lists');
+        setLists(response.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleExpandClick = (listName) => {
+    // Toggle expand state for the list
+    if (expandedList === listName) {
+      setExpandedList(null); // Collapse if it's already expanded
+    } else {
+      setExpandedList(listName); // Expand the selected list
+    }
+  };
+
+  return (
+    <div>
+      <h1>Public Hero Lists</h1>
+      <ul>
+        {lists.map(list => (
+          <li key={list.name}>
+            <h2>{list.name}</h2>
+            <button onClick={() => handleExpandClick(list.name)}>
+              {expandedList === list.name ? 'Hide Details' : 'Show Details'}
+            </button>
+            <p>Nickname: {list.nickname}</p>
+            <p>Number of Heroes: {list.numberOfHeroes}</p>
+            <p>Average Rating: {list.averageRating.toFixed(1)}</p>
+            <p>Last Modified: {new Date(list.lastModified).toLocaleDateString()}</p>
+            {expandedList === list.name && (
+              <div>
+                {list.superheroes.map((hero, index) => (
+                  <div key={index}>
+                    <p>Name: {hero.name}</p>
+                    <p>Power: {hero.powers.join(', ')}</p>
+                    <p>Publisher: {hero.Publisher}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 
 
+
+function ListForm() {
+  const [listName, setListName] = useState('');
+  const [superheroIds, setSuperheroIds] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [rating, setRating] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const idsArray = superheroIds.split(',').map(id => parseInt(id.trim(), 10));
+    const ratingValue = parseFloat(rating);
+
+    try {
+      const response = await axios.post(`http://localhost:4000/api/lists/${listName}`, {
+        superheroIds: idsArray,
+        nickname,
+        rating: ratingValue
+      });
+      console.log(response.data);
+      alert('List updated successfully!');
+    } catch (error) {
+      console.error('Error updating list:', error);
+      alert('Error updating list.');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="text"
+        value={listName}
+        onChange={(e) => setListName(e.target.value)}
+        placeholder="List Name"
+        required
+      />
+      <input
+        type="text"
+        value={superheroIds}
+        onChange={(e) => setSuperheroIds(e.target.value)}
+        placeholder="Superhero IDs (comma-separated)"
+        required
+      />
+      <input
+        type="text"
+        value={nickname}
+        onChange={(e) => setNickname(e.target.value)}
+        placeholder="Nickname"
+        required
+      />
+      <input
+        type="number"
+        value={rating}
+        onChange={(e) => setRating(e.target.value)}
+        placeholder="Rating"
+        step="0.1"
+        required
+      />
+      <button type="submit">Update List</button>
+    </form>
+  );
+}
 
 
 function ListResults() {
@@ -271,7 +391,7 @@ function ListResults() {
         setIsLoading(true);
         const encodedReturn = encodeURIComponent(listReturn);
         try {
-          const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/lists/${encodedReturn}`);
+          const response = await fetch(`http://localhost:4000/api/lists/${encodedReturn}`);
           if (!response.ok) {
             throw new Error(`Network response was not ok: ${response.statusText}`);
           }
@@ -307,7 +427,7 @@ function ListResults() {
           method: 'DELETE',
         };
     
-        fetch(`${process.env.REACT_APP_API_BASE_URL}/api/lists/${encodedReturn}`, fetchList)
+        fetch(`http://localhost:4000/api/lists/${encodedReturn}`, fetchList)
           .then(response => {
             if (!response.ok) {
               throw new Error(`Network response was not ok: ${response.statusText}`);
@@ -389,7 +509,7 @@ function GetAllPublishersComponent() {
   const [publishers, setPublishers] = useState([]);
   const [error, setError] = useState(null);
   const fetchPublishers = () => {
-    fetch(`${process.env.REACT_APP_API_BASE_URL}/api/superheroes/publishers`)
+    fetch(`http://localhost:4000/api/superheroes/publishers`)
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -420,4 +540,123 @@ function GetAllPublishersComponent() {
   };
 }
 
-export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent};
+export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent,ListForm, HeroLists};
+
+
+/*
+const handleSearchClick = () => {
+ // Get the current value of the input and select elements
+ const displayn = sanitizeNumber(displayvolume.toLowerCase());
+ const searchTerm = sanitizeString(sea.value.toLowerCase());
+ const searchpower = sanitizeString(searchTermInput.value);
+ const category = categorySelect.value;
+ const catsorter = categoryorder.value;
+ const displayvolume = parseInt(displayn);
+ console.log(searchTerm, category, displayvolume, searchpower); // Log the search term and category for debugging
+
+ // Call the search function with the current search term and category
+ searchSuperheroes(searchTerm, category, displayvolume, searchpower, catsorter);
+  };
+  
+  const handleSubmitList = () => {
+    const listVal = listName.value;
+    const ids = superhero_ids.value.split(',').map(id => parseInt(id.trim(), 10)); // Convert string of IDs into an array of numbers
+    createSuperheroList(listVal, ids);
+    console.log(ids)
+  };
+  
+  const handleListReturn = () => {
+    const listreturnsi = sanitizeString(listreturn.value);
+    const listsorter = listorder.value;
+    const attributeorder = attributeSelect.value;
+    const list_obj= list_objective.value;
+    getSuperheroList(listreturnsi, listsorter, attributeorder, list_obj);
+  };
+  */
+
+  /*
+const [searchTerm, setSearchTerm] = useState('');//searchTermInput
+const [category, setCategory] = useState('');//categorySelect
+const [displayVolume, setDisplayVolume] = useState('');//displayvol
+const [listName, setListName] = useState('');//listName
+const [superheroIds, setSuperheroIds] = useState('');//superhero_ids
+const [listReturn, setListReturn] = useState('');//listreturn
+const [categoryOrder, setCategoryOrder] = useState('');//categoryorder
+const [listOrder, setListOrder] = useState('');//listorder
+const [listObjective, setListObjective] = useState('');//list_objective
+const [attribute, setAttribute] = useState('');//attributeSelect
+const [results, setResults] = useState([]);//div id for showing the content provided
+const [superheroes, setSuperheroes] = React.useState([]);
+const [isLoading, setIsLoading] = React.useState(false);
+const [error, setError] = React.useState(null);
+const [deleteStatus, setDeleteStatus] = React.useState('');
+const [searchPower, setSearchPower] = React.useState('');
+const [publishers, setPublishers] = React.useState([]);
+const searchButton = document.getElementById("submit");
+const submitlistButton = document.getElementById("submitlist");
+const searchTermInput = document.getElementById("searchTerm");
+const showpublishers = document.getElementById('submitpublishers');
+*/
+
+/*
+    const fetchList = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listName }) // Assuming the server expects an object with a key 'listName'
+    };
+//input Sanitization before fetching
+    fetch('/api/lists', fetchList)
+      .then(response => {
+        if (!response.ok) {
+            herocontent.innerHTML='List Exists';
+          throw new Error('Network response was not ok ' + response.statusText);
+        }
+        return response.json(); // Parse JSON response into JavaScript object
+      })
+      .then(data => {
+        herocontent.innerHTML='List Created';
+        console.log('List created:', data); // Handle the response data
+  
+        // Now, add superhero IDs to the list
+        const fetchIDs = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({superheroIds}) // Assuming the server expects an object with a key 'superhero_ids'
+        };
+  console.log(JSON.stringify(superheroIds ));
+//input Sanitization before fetching
+  
+const encodedlistName = encodeURIComponent(listName);
+        return fetch(`/api/lists/${encodedlistName}`, fetchIDs); // Adjust the endpoint as per your API
+      })
+      .then(response => {
+        if (!response.ok) {  
+          throw new Error('Network response was not ok ' + response.statusText);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Superhero IDs added:', data); // Handle the response data
+        // Fetch the updated list
+      });
+  }
+  */
+ /* <select 
+  value={category} 
+  onChange={(e) => setCategory(e.target.value)}>
+  <option value="">Select Category</option>
+
+function MyComponent() {
+  const [superheroIdsInput, setSuperheroIdsInput] = useState('');
+
+  const handleSuperheroIdsChange = (e) => {
+    setSuperheroIdsInput(e.target.value);
+  };
+
+  return (
+    <input type="text" value={superheroIdsInput} onChange={handleSuperheroIdsChange} />
+  );
+}
+
+
+  */
