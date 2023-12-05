@@ -485,6 +485,60 @@ const EditListForm = () => {
   );
 };
 
+function DeleteListForm() {
+  const [lists, setLists] = useState([]);
+  const [selectedList, setSelectedList] = useState('');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/lists');
+        const privateLists = response.data.filter(list => list.visibility === 'private');
+        setLists(privateLists);
+      } catch (error) {
+        console.error('Error fetching lists:', error);
+      }
+    };
+
+    fetchLists();
+  }, []);
+
+  const handleDelete = async () => {
+    if (!selectedList) {
+      setMessage('Please select a list to delete.');
+      return;
+    }
+    
+    try {
+      await axios.delete(`http://localhost:4000/api/lists/${selectedList}`);
+      setMessage('List deleted successfully!');
+      setSelectedList(''); // Reset selected list after deletion
+      // Optional: refresh the list of lists
+      // fetchLists();
+    } catch (error) {
+      console.error('Error deleting list:', error);
+      setMessage('Failed to delete list. Please try again.');
+    }
+  };
+
+  return (
+    <div>
+      <h3>Delete a List</h3>
+      {message && <p>{message}</p>}
+      <select value={selectedList} onChange={(e) => setSelectedList(e.target.value)}>
+        <option value="">Select a List</option>
+        {lists.map(list => (
+          <option key={list.name} value={list.name}>{list.name}</option>
+        ))}
+      </select>
+      <button onClick={handleDelete}>Delete List</button>
+    </div>
+  );
+}
+
+
+
 const ReviewForm = () => {
   const [lists, setLists] = useState([]); // All available lists as an array
   const [selectedList, setSelectedList] = useState(''); // Currently selected list for review
@@ -736,6 +790,6 @@ function GetAllPublishersComponent() {
   };
 }
 
-export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm};
+export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm, DeleteListForm};
 
 
