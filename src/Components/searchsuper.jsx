@@ -265,7 +265,8 @@ function HeroLists() {
     const fetchData = async () => {
       try {
         const response = await axios.get('http://localhost:4000/api/lists');
-        setLists(response.data.map(list => ({ ...list, reviews: [] }))); // Initialize reviews as empty array
+        console.log("Fetched lists:", response.data); 
+        setLists(response.data); // Assuming each list item has a 'reviews' field
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -278,15 +279,7 @@ function HeroLists() {
     if (expandedList === listName) {
       setExpandedList(null);
     } else {
-      try {
-        const response = await axios.get(`http://localhost:4000/api/lists/${listName}`);
-        setLists(lists.map(list => 
-          list.name === listName ? { ...list, ...response.data } : list
-        ));
-        setExpandedList(listName);
-      } catch (error) {
-        console.error('Error fetching list details:', error);
-      }
+      setExpandedList(listName);
     }
   };
 
@@ -337,6 +330,7 @@ function HeroLists() {
     </div>
   );
 }
+
 
 
 
@@ -789,6 +783,7 @@ function GetAllPublishersComponent() {
       );
   };
 }
+
 
 export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm, DeleteListForm};
 
