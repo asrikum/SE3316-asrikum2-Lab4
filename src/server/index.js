@@ -529,27 +529,25 @@ app.get('/api/lists', async (req, res) => {
 
 app.delete('/api/lists/:listName', (req, res) => {
   try {
-    // Extract the listName from the request parameters
     const { listName } = req.params;
+    const list = db.get(`lists.${listName}`).value();
 
-    // Check if the list name exists in the database
-    const listExists = db.has(`lists.${listName}`).value();
-
-    if (!listExists) {
-      // If the list name does not exist, return an error
+    if (!list) {
       return res.status(404).send('List name does not exist.');
     }
-    db.unset(`lists.${listName}`).write();
 
-    // Send a success response
+    if (list.visibility !== 'private') {
+      return res.status(403).send('Only private lists can be deleted.');
+    }
+
+    db.unset(`lists.${listName}`).write();
     res.status(200).send('List deleted successfully.');
-} catch (error) {
-  // If there's an error, log it and send a 500 response
-  console.error('Server error:', error);
-  res.status(500).send('Server error');
-}
-  
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).send('Server error');
+  }
 });
+
 
 
 app.post('/api/lists/:listName/reviews', async (req, res) => {
