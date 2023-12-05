@@ -371,6 +371,38 @@ app.post('/api/lists/:listName', async (req, res) => {
   });
 });
 
+app.put('/api/lists/:listName', async (req, res) => {
+  const { listName } = req.params;
+  const { superheroes, description, visibility } = req.body;
+
+  // Basic validation
+  if (!Array.isArray(superheroes) || typeof description !== 'string' || !['public', 'private'].includes(visibility)) {
+    return res.status(400).send('Invalid input data.');
+  }
+
+  let list = db.get(`lists.${listName}`).value();
+  
+  if (!list) {
+    return res.status(404).send('List not found.');
+  }
+
+  // Update the list
+  list = {
+    ...list,
+    superheroes,
+    description,
+    visibility,
+    lastModified: new Date().toISOString() // Update last modified time
+  };
+
+  db.set(`lists.${listName}`, list).write();
+
+  res.status(200).json({
+    message: 'List updated successfully',
+    superheroes,
+    list
+  });
+});
 
 
 app.get('/api/lists/:listName', async (req, res) => {
@@ -420,6 +452,7 @@ app.get('/api/lists/:listName', async (req, res) => {
       description: list.description || 'No description provided',
       visibility: list.visibility || 'private',
       superheroes: superheroDetails,
+      reviews: list.reviews || [],
       lastModified: db.get(`lastModified.${listName}`).value(),
     });
 
@@ -494,9 +527,6 @@ app.get('/api/lists', async (req, res) => {
   }
 });
 
-        
-
-
 app.delete('/api/lists/:listName', (req, res) => {
   try {
     // Extract the listName from the request parameters
@@ -519,6 +549,42 @@ app.delete('/api/lists/:listName', (req, res) => {
   res.status(500).send('Server error');
 }
   
+});
+
+
+app.post('/api/lists/:listName/reviews', async (req, res) => {
+  try {
+    const { listName } = req.params;
+    const { rating, comment } = req.body;
+
+    // Validate rating
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).send('Invalid rating.');
+    }
+
+    // Fetch the list from lowdb
+    const list = db.get('lists').get(listName).value();
+
+    if (!list) {
+      return res.status(404).send('List not found.');
+    }
+
+    // Check if the list is public
+    if (list.visibility !== 'public') {
+      return res.status(403).send('This list is not public.');
+    }
+
+    // Add the review
+    const reviews = list.reviews || [];
+    reviews.push({ rating, comment });
+
+    // Update the list in lowdb
+    db.get('lists').get(listName).assign({ reviews }).write();
+
+    res.status(201).send('Review added successfully.');
+  } catch (error) {
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 // PORT
