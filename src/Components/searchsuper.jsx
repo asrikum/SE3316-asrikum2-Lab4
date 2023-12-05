@@ -1,6 +1,7 @@
 
 // Get the search button and input elements from the DOM
 import React, { useState, useEffect } from 'react';
+
 import './LoginSignup.css'
 import axios from 'axios';
 function sanitizeString(str) {
@@ -89,6 +90,12 @@ console.log(category)
 const handleSuperheroSelect = (results) => {
   setSelectedSuperheroId(results);
 };
+
+const handleDDGSearch = (heroName) => {
+  const query = encodeURIComponent(heroName);
+  window.open(`https://duckduckgo.com/?q=${query}`, '_blank');
+};
+
 
   const searchSuperheroes = () => {
     const encodedSearchTerm = encodeURIComponent(searchTerm);
@@ -179,6 +186,7 @@ console.log(category);
             <p> 
               Name: {superhero.name} Publisher: {superhero.Publisher}
               <button onClick={() => handleSuperheroSelect(superhero.id)}>Extend</button>
+              <button onClick={() => handleDDGSearch(superhero.name)}>Search on DDG</button>
             </p>
             
             {selectedSuperheroId === superhero.id && (category==="name" || category==="Race" || category==="Publisher")&&
@@ -394,6 +402,186 @@ function ListForm() {
   );
 }
 
+const EditListForm = () => {
+  const [lists, setLists] = useState([]); // All available lists
+  const [selectedList, setSelectedList] = useState(''); // Currently selected list for editing
+  const [superheroes, setSuperheroes] = useState([]); // IDs of superheroes in the list
+  const [description, setDescription] = useState(''); // Description of the list
+  const [visibility, setVisibility] = useState('private'); // Visibility of the list
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/lists');
+        setLists(response.data); // Assuming the response contains a list of list names
+      } catch (error) {
+        console.error('Error fetching lists:', error);
+      }
+    };
+    fetchLists();
+  }, []);
+
+  useEffect(() => {
+    // Fetch the details of the selected list
+    const fetchListDetails = async () => {
+      if (selectedList) {
+        try {
+          const response = await axios.get(`http://localhost:4000/api/lists/${selectedList}`);
+          const listDetails = response.data;
+          setSuperheroes(listDetails.superheroes.join(', ')); // Assuming the superheroes are in an array
+          setDescription(listDetails.description);
+          setVisibility(listDetails.visibility);
+        } catch (error) {
+          console.error('Error fetching list details:', error);
+        }
+      }
+    };
+    fetchListDetails();
+  }, [selectedList]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const superheroesArray = superheroes.split(',').map(id => parseInt(id.trim(), 10)); // Convert to array of integers
+
+    try {
+      const response = await axios.put(`http://localhost:4000/api/lists/${selectedList}`, {
+        superheroes: superheroesArray,
+        description,
+        visibility
+      });
+      console.log(response.data);
+      alert('List updated successfully!');
+    } catch (error) {
+      console.error('Error updating list:', error);
+      alert('Error updating list.');
+    }
+  };
+
+  return (
+    <div>
+      <h3>Edit a List</h3>
+      <select onChange={(e) => setSelectedList(e.target.value)} value={selectedList}>
+        <option value="">Select a List</option>
+        {lists.map(list => (
+          <option key={list.name} value={list.name}>{list.name}</option>
+        ))}
+      </select>
+
+      {selectedList && (
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={superheroes}
+            onChange={(e) => setSuperheroes(e.target.value)}
+            placeholder="Superhero IDs (comma-separated)"
+          />
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description"
+          />
+          <select value={visibility} onChange={(e) => setVisibility(e.target.value)}>
+            <option value="private">Private</option>
+            <option value="public">Public</option>
+          </select>
+          <button type="submit">Update List</button>
+        </form>
+      )}
+    </div>
+  );
+};
+
+const ReviewForm = () => {
+  const [lists, setLists] = useState([]); // List of public hero lists
+  const [selectedList, setSelectedList] = useState(''); // Selected list
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    // Fetch the list of public hero lists
+    const fetchLists = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/lists');
+        setLists(response.data);
+      } catch (error) {
+        console.error('Error fetching lists:', error);
+      }
+    };
+
+    fetchLists();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedList) {
+      setMessage('Please select a list to review.');
+      return;
+    }
+
+    try {
+      const url = `http://localhost:4000/api/lists/${selectedList}/reviews`;
+      await axios.post(url, { rating, comment });
+      setMessage('Review added successfully!');
+      setRating(0);
+      setComment('');
+    } catch (error) {
+      setMessage('Failed to add review. Please try again.');
+    }
+  };
+
+  return (
+    <div>
+      <h3>Add a Review to a Hero List</h3>
+      {message && <p>{message}</p>}
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>
+            Choose a List:
+            <select
+              value={selectedList}
+              onChange={(e) => setSelectedList(e.target.value)}
+              required
+            >
+              <option value="">Select a List</option>
+              {lists.map((list) => (
+                <option key={list._id} value={list.name}>
+                  {list.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>
+            Rating:
+            <input
+              type="number"
+              value={rating}
+              onChange={(e) => setRating(e.target.value)}
+              min="1"
+              max="5"
+              required
+            />
+          </label>
+        </div>
+        <div>
+          <label>
+            Comment:
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+          </label>
+        </div>
+        <button type="submit">Submit Review</button>
+      </form>
+    </div>
+  );
+};
+
+
+
 
 function ListResults() {
   const [listReturn, setListReturn] = useState('');
@@ -562,123 +750,6 @@ function GetAllPublishersComponent() {
   };
 }
 
-export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent,ListForm, HeroLists};
+export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm};
 
 
-/*
-const handleSearchClick = () => {
- // Get the current value of the input and select elements
- const displayn = sanitizeNumber(displayvolume.toLowerCase());
- const searchTerm = sanitizeString(sea.value.toLowerCase());
- const searchpower = sanitizeString(searchTermInput.value);
- const category = categorySelect.value;
- const catsorter = categoryorder.value;
- const displayvolume = parseInt(displayn);
- console.log(searchTerm, category, displayvolume, searchpower); // Log the search term and category for debugging
-
- // Call the search function with the current search term and category
- searchSuperheroes(searchTerm, category, displayvolume, searchpower, catsorter);
-  };
-  
-  const handleSubmitList = () => {
-    const listVal = listName.value;
-    const ids = superhero_ids.value.split(',').map(id => parseInt(id.trim(), 10)); // Convert string of IDs into an array of numbers
-    createSuperheroList(listVal, ids);
-    console.log(ids)
-  };
-  
-  const handleListReturn = () => {
-    const listreturnsi = sanitizeString(listreturn.value);
-    const listsorter = listorder.value;
-    const attributeorder = attributeSelect.value;
-    const list_obj= list_objective.value;
-    getSuperheroList(listreturnsi, listsorter, attributeorder, list_obj);
-  };
-  */
-
-  /*
-const [searchTerm, setSearchTerm] = useState('');//searchTermInput
-const [category, setCategory] = useState('');//categorySelect
-const [displayVolume, setDisplayVolume] = useState('');//displayvol
-const [listName, setListName] = useState('');//listName
-const [superheroIds, setSuperheroIds] = useState('');//superhero_ids
-const [listReturn, setListReturn] = useState('');//listreturn
-const [categoryOrder, setCategoryOrder] = useState('');//categoryorder
-const [listOrder, setListOrder] = useState('');//listorder
-const [listObjective, setListObjective] = useState('');//list_objective
-const [attribute, setAttribute] = useState('');//attributeSelect
-const [results, setResults] = useState([]);//div id for showing the content provided
-const [superheroes, setSuperheroes] = React.useState([]);
-const [isLoading, setIsLoading] = React.useState(false);
-const [error, setError] = React.useState(null);
-const [deleteStatus, setDeleteStatus] = React.useState('');
-const [searchPower, setSearchPower] = React.useState('');
-const [publishers, setPublishers] = React.useState([]);
-const searchButton = document.getElementById("submit");
-const submitlistButton = document.getElementById("submitlist");
-const searchTermInput = document.getElementById("searchTerm");
-const showpublishers = document.getElementById('submitpublishers');
-*/
-
-/*
-    const fetchList = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ listName }) // Assuming the server expects an object with a key 'listName'
-    };
-//input Sanitization before fetching
-    fetch('/api/lists', fetchList)
-      .then(response => {
-        if (!response.ok) {
-            herocontent.innerHTML='List Exists';
-          throw new Error('Network response was not ok ' + response.statusText);
-        }
-        return response.json(); // Parse JSON response into JavaScript object
-      })
-      .then(data => {
-        herocontent.innerHTML='List Created';
-        console.log('List created:', data); // Handle the response data
-  
-        // Now, add superhero IDs to the list
-        const fetchIDs = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({superheroIds}) // Assuming the server expects an object with a key 'superhero_ids'
-        };
-  console.log(JSON.stringify(superheroIds ));
-//input Sanitization before fetching
-  
-const encodedlistName = encodeURIComponent(listName);
-        return fetch(`/api/lists/${encodedlistName}`, fetchIDs); // Adjust the endpoint as per your API
-      })
-      .then(response => {
-        if (!response.ok) {  
-          throw new Error('Network response was not ok ' + response.statusText);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('Superhero IDs added:', data); // Handle the response data
-        // Fetch the updated list
-      });
-  }
-  */
- /* <select 
-  value={category} 
-  onChange={(e) => setCategory(e.target.value)}>
-  <option value="">Select Category</option>
-
-function MyComponent() {
-  const [superheroIdsInput, setSuperheroIdsInput] = useState('');
-
-  const handleSuperheroIdsChange = (e) => {
-    setSuperheroIdsInput(e.target.value);
-  };
-
-  return (
-    <input type="text" value={superheroIdsInput} onChange={handleSuperheroIdsChange} />
-  );
-}
-
-
-  */
