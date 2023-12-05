@@ -14,15 +14,16 @@ const Login = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const url = "http://localhost:8080/api/auth";
-            const { data: res } = await axios.post(url, data);
-            localStorage.setItem("token", res.data);
-
-            if (res.verified === false) {
-                setError("Please verify your email to access all features.");
-                setResend(true);
+		e.preventDefault();
+		try {
+			const url = "http://localhost:8080/api/auth";
+			const { data: res } = await axios.post(url, data);
+			localStorage.setItem("token", res.data);
+			localStorage.setItem("isVerified", res.verified); // Store the verification status
+	
+			if (res.verified === false) {
+				setError("Please verify your email to access all features.");
+				setResend(true);
             } else {
 				window.location="/";
                 navigate("/"); // Redirect to main page if verified
