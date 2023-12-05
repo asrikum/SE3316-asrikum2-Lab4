@@ -259,14 +259,13 @@ function SuperheroList() {
 }
 function HeroLists() {
   const [lists, setLists] = useState([]);
-  const [expandedList, setExpandedList] = useState(null); // Track expanded list for basic details
-  const [fullDetailsList, setFullDetailsList] = useState(null); // Track expanded list for full details
+  const [expandedList, setExpandedList] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await axios.get('http://localhost:4000/api/lists');
-        setLists(response.data);
+        setLists(response.data.map(list => ({ ...list, reviews: [] }))); // Initialize reviews as empty array
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -275,19 +274,19 @@ function HeroLists() {
     fetchData();
   }, []);
 
-  const handleExpandClick = (listName) => {
-    setExpandedList(expandedList === listName ? null : listName);
-    // Collapse full details if the same list is expanded/collapsed
-    if (fullDetailsList === listName) {
-      setFullDetailsList(null);
-    }
-  };
-
-  const handleFullDetailsClick = (listName) => {
-    setFullDetailsList(fullDetailsList === listName ? null : listName);
-    // Collapse basic details if the same list is expanded/collapsed
+  const handleExpandClick = async (listName) => {
     if (expandedList === listName) {
       setExpandedList(null);
+    } else {
+      try {
+        const response = await axios.get(`http://localhost:4000/api/lists/${listName}`);
+        setLists(lists.map(list => 
+          list.name === listName ? { ...list, ...response.data } : list
+        ));
+        setExpandedList(listName);
+      } catch (error) {
+        console.error('Error fetching list details:', error);
+      }
     }
   };
 
@@ -301,9 +300,6 @@ function HeroLists() {
             <button onClick={() => handleExpandClick(list.name)}>
               {expandedList === list.name ? 'Hide Details' : 'Show Details'}
             </button>
-            <button onClick={() => handleFullDetailsClick(list.name)}>
-              {fullDetailsList === list.name ? 'Hide All Info' : 'Show All Info'}
-            </button>
             <p>Description: {list.description || 'No description available'}</p>
             <p>Visibility: {list.visibility.charAt(0).toUpperCase() + list.visibility.slice(1)}</p>
             <p>Number of Heroes: {list.superheroes.length}</p>
@@ -311,31 +307,28 @@ function HeroLists() {
             <p>Last Modified: {new Date(list.lastModified).toLocaleDateString()}</p>
             {expandedList === list.name && (
               <div>
-                {list.superheroes.map((hero, index) => (
-                  <div key={index}>
-                    <p>Name: {hero.name}</p>
-                    <p>Power: {hero.powers.join(', ')}</p>
-                    <p>Publisher: {hero.Publisher}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            {fullDetailsList === list.name && (
-              <div>
-                {list.superheroes.map((hero, index) => (
-                  <div key={index}>
-                    <p>Gender: {hero.gender}</p>
-                    <p>Eye Color: {hero.Eye_Color}</p>
-                    <p>Race: {hero.race}</p>
-                    <p>Hair: {hero.Hair}</p>
-                    <p>Height: {hero.Height}</p>
-                    <p>Publisher: {hero.Publisher}</p>
-                    <p>Skin: {hero.Skin}</p>
-                    <p>Alignment: {hero.Alignment}</p>
-                    <p>Weight: {hero.Weight}</p>
-                    <p>Powers: {hero.powers.join(', ')}</p>
-                  </div>
-                ))}
+                <div>
+                  {list.superheroes.map((hero, index) => (
+                    <div key={index}>
+                      <p>Name: {hero.name}</p>
+                      <p>Power: {hero.powers.join(', ')}</p>
+                      <p>Publisher: {hero.Publisher}</p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h3>Reviews:</h3>
+                  {list.reviews && list.reviews.length > 0 ? (
+                    list.reviews.map((review, index) => (
+                      <div key={index}>
+                        <p>Rating: {review.rating}</p>
+                        <p>Comment: {review.comment}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No reviews yet.</p>
+                  )}
+                </div>
               </div>
             )}
           </li>
@@ -344,6 +337,7 @@ function HeroLists() {
     </div>
   );
 }
+
 
 
 
@@ -492,18 +486,20 @@ const EditListForm = () => {
 };
 
 const ReviewForm = () => {
-  const [lists, setLists] = useState([]); // List of public hero lists
-  const [selectedList, setSelectedList] = useState(''); // Selected list
+  const [lists, setLists] = useState([]); // All available lists as an array
+  const [selectedList, setSelectedList] = useState(''); // Currently selected list for review
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [message, setMessage] = useState('');
 
+  // Fetch all lists when the component mounts
   useEffect(() => {
-    // Fetch the list of public hero lists
     const fetchLists = async () => {
       try {
         const response = await axios.get('http://localhost:4000/api/lists');
-        setLists(response.data);
+        const listsData = response.data; // Adjust this based on your actual response structure
+        const publicLists = listsData.filter(list => list.visibility === 'public');
+        setLists(publicLists);
       } catch (error) {
         console.error('Error fetching lists:', error);
       }
@@ -514,14 +510,11 @@ const ReviewForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedList) {
-      setMessage('Please select a list to review.');
-      return;
-    }
-
     try {
-      const url = `http://localhost:4000/api/lists/${selectedList}/reviews`;
-      await axios.post(url, { rating, comment });
+      const response = await axios.post(`http://localhost:4000/api/lists/${selectedList}/reviews`, {
+        rating,
+        comment
+      });
       setMessage('Review added successfully!');
       setRating(0);
       setComment('');
@@ -532,50 +525,43 @@ const ReviewForm = () => {
 
   return (
     <div>
-      <h3>Add a Review to a Hero List</h3>
+      <h3>Add a Review to a List</h3>
       {message && <p>{message}</p>}
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>
-            Choose a List:
-            <select
-              value={selectedList}
-              onChange={(e) => setSelectedList(e.target.value)}
-              required
-            >
-              <option value="">Select a List</option>
-              {lists.map((list) => (
-                <option key={list._id} value={list.name}>
-                  {list.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div>
-          <label>
-            Rating:
-            <input
-              type="number"
-              value={rating}
-              onChange={(e) => setRating(e.target.value)}
-              min="1"
-              max="5"
-              required
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            Comment:
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-          </label>
-        </div>
-        <button type="submit">Submit Review</button>
-      </form>
+
+      <select onChange={(e) => setSelectedList(e.target.value)} value={selectedList}>
+        <option value="">Select a List</option>
+        {lists.map((list) => (
+          <option key={list.name} value={list.name}>{list.name}</option>
+        ))}
+      </select>
+
+      {selectedList && (
+        <form onSubmit={handleSubmit}>
+          <div>
+            <label>
+              Rating:
+              <input
+                type="number"
+                value={rating}
+                onChange={(e) => setRating(e.target.value)}
+                min="1"
+                max="5"
+                required
+              />
+            </label>
+          </div>
+          <div>
+            <label>
+              Comment:
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+            </label>
+          </div>
+          <button type="submit">Submit Review</button>
+        </form>
+      )}
     </div>
   );
 };
