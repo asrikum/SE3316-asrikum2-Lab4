@@ -463,69 +463,64 @@ app.get('/api/lists/:listName', async (req, res) => {
 });
 
 
-
 app.get('/api/lists', async (req, res) => {
   try {
     const lists = db.get('lists').value();
     const lastModified = db.get('lastModified').value();
+    const reviews = db.get('reviews').value();
 
-    const listsArray = Object.entries(lists).map(([listName, listData]) => ({
-      name: listName,
-      ...listData,
-      lastModified: lastModified[listName]
-    }));
+    const detailedLists = Object.entries(lists).map(([listName, listData]) => {
+      // Fetch reviews for each specific list
+      const listReviews = Object.values(reviews).filter(review => review.listName === listName);
 
-    const sortedLists = listsArray.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified)).slice(0, 20);
-
-    const detailedLists = sortedLists.map(list => {
       let superheroDetails = [];
-      if (list.superheroes && Array.isArray(list.superheroes)) {
-        for (let heroId of list.superheroes) {
+      if (listData.superheroes && Array.isArray(listData.superheroes)) {
+        superheroDetails = listData.superheroes.map(heroId => {
           const superhero = superhero_pub.find(sh => sh.id === heroId);
-          if (superhero) {
-            const superheropowers = superheroes.find(sh => sh.hero_names === superhero.name);
-            const powers = superheropowers ? Object.entries(superheropowers)
-              .filter(([key, value]) => value === "True" && key !== "hero_names")
-              .map(([key]) => key) : [];
-
-            superheroDetails.push({
-              id: heroId,
-              name: superhero.name,
-              gender: superhero.Gender,
-              Eye_Color: superhero["Eye color"],
-              race: superhero.Race,
-              Hair: superhero["Hair color"],
-              Height: superhero.Height,
-              Publisher: superhero.Publisher,
-              Skin: superhero["Skin color"],
-              Alignment: superhero.Alignment,
-              Weight: superhero.Weight,
-              powers: powers,
-            });
-          }
-        }
+          return superhero ? {
+            id: heroId,
+            name: superhero.name,
+            gender: superhero.Gender,
+            Eye_Color: superhero["Eye color"],
+            race: superhero.Race,
+            Hair: superhero["Hair color"],
+            Height: superhero.Height,
+            Publisher: superhero.Publisher,
+            Skin: superhero["Skin color"],
+            Alignment: superhero.Alignment,
+            Weight: superhero.Weight,
+            powers: superhero.powers || [],
+          } : null;
+        }).filter(hero => hero !== null);
       }
 
-      const averageRating = list.ratings && list.ratings.length > 0 
-                            ? list.ratings.reduce((a, b) => a + b, 0) / list.ratings.length 
+      const averageRating = listData.ratings && listData.ratings.length > 0 
+                            ? listData.ratings.reduce((a, b) => a + b, 0) / listData.ratings.length 
                             : 0;
 
       return {
-        ...list,
+        name: listName,
         superheroes: superheroDetails,
         averageRating,
-        description: list.description || 'No description provided',
-        visibility: list.visibility || 'private'
+        description: listData.description || 'No description provided',
+        visibility: listData.visibility || 'private',
+        reviews: listReviews,
+        lastModified: lastModified[listName] || new Date().toISOString()
       };
     });
 
-    res.status(200).json(detailedLists);
+    // Sort and limit the lists
+    detailedLists.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
+    const limitedLists = detailedLists.slice(0, 20);
+
+    res.status(200).json(limitedLists);
 
   } catch (error) {
     console.error('Server error:', error);
     res.status(500).send('Server error');
   }
 });
+
 
 app.delete('/api/lists/:listName', (req, res) => {
   try {
@@ -550,6 +545,8 @@ app.delete('/api/lists/:listName', (req, res) => {
 
 
 
+const { v4: uuidv4 } = require('uuid'); // For generating unique IDs
+
 app.post('/api/lists/:listName/reviews', async (req, res) => {
   try {
     const { listName } = req.params;
@@ -572,18 +569,105 @@ app.post('/api/lists/:listName/reviews', async (req, res) => {
       return res.status(403).send('This list is not public.');
     }
 
-    // Add the review
-    const reviews = list.reviews || [];
-    reviews.push({ rating, comment });
+    // Generate a unique ID for the review
+    const reviewId = uuidv4();
 
-    // Update the list in lowdb
-    db.get('lists').get(listName).assign({ reviews }).write();
+    // Add the review to the reviews object
+    db.get('reviews').set(reviewId, {
+      listName,
+      rating,
+      comment,
+      hidden: false
+    }).write();
+
+    // Add the review ID to the list's reviews array
+    const updatedReviews = list.reviews ? [...list.reviews, reviewId] : [reviewId];
+    db.get('lists').get(listName).assign({ reviews: updatedReviews }).write();
 
     res.status(201).send('Review added successfully.');
   } catch (error) {
     res.status(500).send('Internal Server Error');
   }
 });
+
+
+const User = require('../loginbase/server/models/user'); // Adjust the path according to your file structure
+
+app.post('/api/users/promote-to-admin/:userId', async (req, res) => {
+  // This route should be protected and only accessible by existing admins
+  const { userId } = req.params;
+  const user = await User.findById(userId);
+  if (!user) {
+      return res.status(404).send('User not found.');
+  }
+  user.isAdmin = true;
+  await user.save();
+  res.send('User promoted to admin.');
+});
+
+const adminAuth = async (req, res, next) => {
+  // Extract user details from the request (e.g., from JWT)
+  const userId = req.user.id; // Assuming you have user's ID from JWT or session
+
+  // Fetch the user from MongoDB
+  const user = await User.findById(userId);
+
+  // Check if user is an admin
+  if (user && user.isManager) {
+      next();
+  } else {
+      res.status(403).send('Access denied. Admin privileges required.');
+  }
+};
+
+
+app.put('/api/users/:userId/manager', adminAuth, async (req, res) => {
+  const { userId } = req.params;
+  const user = await User.findById(userId);
+
+  if (!user) {
+      return res.status(404).send('User not found.');
+  }
+
+  user.isManager = !user.isManager; // Toggle the manager status
+  await user.save();
+
+  res.send({ message: 'Manager status updated.', isManager: user.isManager });
+});
+
+
+
+app.put('/api/users/:userId/disable', adminAuth, async (req, res) => {
+  const { userId } = req.params;
+  const user = await User.findById(userId);
+
+  if (!user) {
+      return res.status(404).send('User not found.');
+  }
+
+  user.disabled = !user.disabled; // Toggle the disabled status
+  await user.save();
+
+  res.send({ message: 'User disabled status updated.', disabled: user.disabled });
+});
+
+app.put('/api/reviews/:reviewId/hidden', adminAuth, (req, res) => {
+  const { reviewId } = req.params;
+  const review = db.get(`reviews.${reviewId}`).value();
+
+  if (!review) {
+      return res.status(404).send('Review not found.');
+  }
+
+  // Toggle the hidden status
+  review.hidden = !review.hidden;
+  db.set(`reviews.${reviewId}`, review).write();
+
+  res.send({ message: 'Review hidden status updated.', hidden: review.hidden });
+});
+
+
+
 
 // PORT
 const port = process.env.PORT || 4000;// sets an arbritrary port value instead of 3000 as 3000 is more likely to be busy 
