@@ -525,6 +525,52 @@ app.get('/api/lists', async (req, res) => {
   }
 });
 
+app.get('/api/reviews', async (req, res) => {
+  try {
+      const reviews = db.get('reviews').value();
+
+      // Create an array of reviews with their IDs
+      const reviewsWithIds = Object.entries(reviews).map(([id, reviewData]) => {
+          return {
+              id, // The review ID (e.g., "review1", "review2")
+              ...reviewData // The rest of the review data
+          };
+      });
+
+      // Optionally filter based on 'hidden' status if needed
+      const filteredReviews = req.query.showHidden === 'false'
+          ? reviewsWithIds.filter(review => !review.hidden)
+          : reviewsWithIds;
+
+      res.json(filteredReviews);
+  } catch (error) {
+      console.error('Error fetching reviews:', error);
+      res.status(500).send('Error fetching reviews');
+  }
+});
+
+  
+app.put('/api/reviews/:reviewId/hidden', (req, res) => {
+  const reviewId = req.params.reviewId;
+  console.log(`Toggling hidden status for review with ID: ${reviewId}`); // Debug log
+
+  try {
+      const review = db.get('reviews').get(reviewId).value();
+
+      if (!review) {
+          return res.status(404).send('Review not found.');
+      }
+
+      db.get('reviews').get(reviewId).assign({ hidden: !review.hidden }).write();
+      res.send({ message: 'Review hidden status updated.', hidden: !review.hidden });
+  } catch (error) {
+      console.error('Error updating review:', error);
+      res.status(500).send('Internal Server Error');
+  }
+});
+
+
+
 
 app.delete('/api/lists/:listName', (req, res) => {
   try {
@@ -575,7 +621,8 @@ app.post('/api/lists/:listName/reviews', async (req, res) => {
 
     // Generate a unique ID for the review
     const reviewId = uuidv4();
-
+    const reviews = db.get('reviews').value();
+    console.log(reviews);
     // Add the review to the reviews object
     db.get('reviews').set(reviewId, {
       listName,
@@ -603,20 +650,101 @@ const adminAuth = require('../loginbase/server/routes/admin');
 app.use(auth);
 app.use('/admin', auth, adminRoutes);
 
-app.put('/users/:userId/manager', adminAuth, async (req, res) => {
-  const { userId } = req.params;
-  const user = await User.findById(userId);
+const { MongoClient, ObjectId } = require('mongodb');
 
-  if (!user) {
-      return res.status(404).send('User not found.');
+
+
+
+// Assuming these details are correct and stored in your environment or config
+const mongoUri = 'mongodb+srv://saahash:happylife@login.nquijq4.mongodb.net/?retryWrites=true&w=majority';
+const dbName = 'test';
+
+
+
+
+
+async function promoteUserToAdmin(userId) {
+    const client = new MongoClient(mongoUri);
+    try {
+        await client.connect();
+        const database = client.db(dbName);
+        const usersCollection = database.collection('users');
+        
+        let userObjectId;
+        try {
+            userObjectId = new ObjectId(userId);
+        } catch (error) {
+            console.error("Invalid ObjectId format for userId:", userId);
+            throw new Error("Invalid ObjectId format");
+        }
+        const user = await usersCollection.findOne({ _id: userObjectId });
+        console.log("Find one User",user);
+        console.log("Promoting user with ObjectId:", userObjectId);
+
+        const result = await usersCollection.findOneAndUpdate(
+            { _id: userObjectId },
+            { $set: { isAdmin: true } },
+            { returnDocument: 'after' }
+        );
+
+        if (!result.value) {
+            console.log("No user found with ID:", userObjectId);
+            return null;
+        }
+
+        return result.value;
+    } catch (error) {
+        console.error("Error in promoteUserToAdmin:", error);
+        throw error;
+    } finally {
+        await client.close();
+    }
+}
+
+
+
+router.put('/users/:userId/promote-to-admin', adminAuth, async (req, res) => {
+  try {
+      const userId = req.params.userId;
+      console.log("Attempting to promote user with ID:", userId); // Log for debugging
+
+      const updatedUser = await promoteUserToAdmin(userId);
+
+      if (!updatedUser) {
+          console.log("User not found or invalid userId format for ID:", userId); // Log for debugging
+          return res.status(404).send('User not found or invalid userId.');
+      }
+
+      res.send({ message: 'User successfully promoted to admin.', user: updatedUser });
+  } catch (error) {
+      console.error('Error in promoting user:', error);
+      res.status(500).send('Internal server error');
   }
-
-  user.isManager = !user.isManager; // Toggle the manager status
-  await user.save();
-
-  res.send({ message: 'Manager status updated.', isManager: user.isManager });
 });
 
+
+
+
+
+router.put('/reviews/:reviewId/hidden', adminAuth, (req, res) => {
+    const reviewId = req.params.reviewId;
+    const review = db.get('reviews').get(reviewId).value();
+
+    if (!review) {
+        return res.status(404).send('Review not found.');
+    }
+
+    // Toggle the hidden status
+    db.get('reviews').get(reviewId).assign({ hidden: !review.hidden }).write();
+    res.send({ message: 'Review hidden status updated.', hidden: !review.hidden });
+});
+
+// In your server-side route handling
+router.get('/reviews', adminAuth, async (req, res) => {
+    // Fetch reviews from lowdb
+    const reviews = db.get('reviews').value(); // Adjust according to your lowdb setup
+    res.json(reviews);
+});
 
 
 // PORT

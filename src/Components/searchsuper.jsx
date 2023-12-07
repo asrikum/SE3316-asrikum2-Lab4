@@ -784,7 +784,177 @@ function GetAllPublishersComponent() {
   };
 }
 
+const AdminDashboard = () => {
+  const [users, setUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selecteddisabledId, setSelecteddisableId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [reviews, setReviews] = useState([]);
+    const [selectedReviewId, setSelectedReviewId] = useState('');
 
-export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm, DeleteListForm};
+
+  useEffect(() => {
+      fetchUserData();
+      fetchReviews();
+  }, []);
+
+
+  
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+        const token = localStorage.getItem("token");
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+
+        const response = await axios.get("http://localhost:4000/admin/users", config);
+        setUsers(response.data);
+        setLoading(false);
+        console.log(response.data); // Process the response data as needed
+    } catch (error) {
+        console.error("Error fetching user data:", error);
+        setLoading(false);
+        // Handle errors (e.g., token expired, unauthorized access)
+    }
+};
+
+const handleUserSelect = (event) => {
+  setSelectedUserId(event.target.value);
+};
+
+const toggleManagerStatus = async () => {
+  if (!selectedUserId) return;
+
+  try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const config = {
+          headers: {
+              Authorization: `Bearer ${token}`
+          }
+      };
+
+      await axios.put(`http://localhost:4000/admin/users/${selectedUserId}/promote-to-admin`, {}, config);
+      setUsers(users.map(user => user._id === selectedUserId ? { ...user, isManager: !user.isManager } : user));
+      setLoading(false);
+  } catch (error) {
+      console.error("Error updating Admin status", error);
+      setError('Failed to update Admin status');
+      setLoading(false);
+  }
+};
+
+
+const handleUserDisable = (event) => {
+  setSelecteddisableId(event.target.value);
+};
+
+const toggleDisableStatus = async () => {
+  if (!selecteddisabledId) return;
+
+  try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const config = {
+          headers: {
+              Authorization: `Bearer ${token}`
+          }
+      };
+
+      await axios.put(`http://localhost:4000/admin/users/${selecteddisabledId}/disable`, {}, config);
+      setUsers(users.map(user => user._id === selectedUserId ? { ...user, disabled: !user.disabled } : user));
+      setLoading(false);
+  } catch (error) {
+      console.error("Error updating disabled status", error);
+      setError('Failed to update disabled status');
+      setLoading(false);
+  }
+};
+
+const handleAdminReview = (event) => {
+  setSelectedReviewId(event.target.value);
+};
+
+const fetchReviews = async () => {
+  try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:4000/api/reviews');
+      setReviews(response.data); // Assuming response.data is now an array of reviews with ids
+      setLoading(false);
+  } catch (error) {
+      console.error('Error fetching reviews:', error);
+      setError('Error fetching reviews');
+      setLoading(false);
+  }
+};
+
+
+
+
+
+const toggleReviewHiddenStatus = async () => {
+  if (!selectedReviewId) return;
+
+  try {
+      const config = {
+          headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+      };
+      await axios.put(`http://localhost:4000/api/reviews/${selectedReviewId}/hidden`, {}, config);
+      setLoading(false);
+      fetchReviews(); // Re-fetch reviews to update the UI
+  } catch (error) {
+      console.error('Error updating review hidden status', error);
+  }
+};
+  return (
+      <div>
+          <h1>Admin Dashboard</h1>
+          {error && <p style={{ color: 'red' }}>{error}</p>}
+          {loading ? <p>Loading...</p> : (
+              <>
+                  <h2>Users</h2>
+                  <select value={selectedUserId} onChange={handleUserSelect}>
+                      <option value="">Select a User</option>
+                      {users.map(user => (
+                          <option key={user._id} value={user._id}>{user.firstName} {user.lastName}</option>
+                      ))}
+                  </select>
+                  <button onClick={toggleManagerStatus}>Change Admin Status</button>
+              </>
+          )}
+
+<>
+                  <h2>Disable Users</h2>
+                  <select value={selecteddisabledId} onChange={handleUserDisable}>
+                      <option value="">Select a User</option>
+                      {users.map(user => (
+                          <option key={user._id} value={user._id}>{user.firstName} {user.lastName}</option>
+                      ))}
+                  </select>
+                  <button onClick={toggleDisableStatus}>Change Disable Status</button>
+              </>
+              <h1> Reviews</h1>
+              <select value={selectedReviewId} onChange={handleAdminReview}>
+    <option value="">Select a Review</option>
+    {reviews.map(review => (
+        <option key={review.id} value={review.id}>
+            {review.id} - {review.comment || 'No Comment'}
+        </option>
+    ))}
+</select>
+
+
+<button onClick={toggleReviewHiddenStatus}>Change Hidden Status</button>
+      </div>
+  );
+};
+
+export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm, DeleteListForm, AdminDashboard};
 
 
