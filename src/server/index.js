@@ -3,6 +3,10 @@ const cors = require('cors');
 const lowdb = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 const { query } = require('express-validator');
+require('../loginbase/server/db');
+require('mongoose');
+ // This ensures your DB connection is established
+// Rest of your server setup
 
 // ... rest of your route definitions
 
@@ -586,42 +590,20 @@ app.post('/api/lists/:listName/reviews', async (req, res) => {
 
     res.status(201).send('Review added successfully.');
   } catch (error) {
-    res.status(500).send('Internal Server Error');
+    res.status(500).send('Index Server Error');
   }
 });
 
 
-const User = require('../loginbase/server/models/user'); // Adjust the path according to your file structure
+const { User } = require('../loginbase/server/models/user');
+const adminRoutes = require('../loginbase/server/routes/admin');
+const auth = require('../loginbase/middleware/auth');
+const adminAuth = require('../loginbase/server/routes/admin');
 
-app.post('/api/users/promote-to-admin/:userId', async (req, res) => {
-  // This route should be protected and only accessible by existing admins
-  const { userId } = req.params;
-  const user = await User.findById(userId);
-  if (!user) {
-      return res.status(404).send('User not found.');
-  }
-  user.isAdmin = true;
-  await user.save();
-  res.send('User promoted to admin.');
-});
+app.use(auth);
+app.use('/admin', auth, adminRoutes);
 
-const adminAuth = async (req, res, next) => {
-  // Extract user details from the request (e.g., from JWT)
-  const userId = req.user.id; // Assuming you have user's ID from JWT or session
-
-  // Fetch the user from MongoDB
-  const user = await User.findById(userId);
-
-  // Check if user is an admin
-  if (user && user.isManager) {
-      next();
-  } else {
-      res.status(403).send('Access denied. Admin privileges required.');
-  }
-};
-
-
-app.put('/api/users/:userId/manager', adminAuth, async (req, res) => {
+app.put('/users/:userId/manager', adminAuth, async (req, res) => {
   const { userId } = req.params;
   const user = await User.findById(userId);
 
@@ -634,38 +616,6 @@ app.put('/api/users/:userId/manager', adminAuth, async (req, res) => {
 
   res.send({ message: 'Manager status updated.', isManager: user.isManager });
 });
-
-
-
-app.put('/api/users/:userId/disable', adminAuth, async (req, res) => {
-  const { userId } = req.params;
-  const user = await User.findById(userId);
-
-  if (!user) {
-      return res.status(404).send('User not found.');
-  }
-
-  user.disabled = !user.disabled; // Toggle the disabled status
-  await user.save();
-
-  res.send({ message: 'User disabled status updated.', disabled: user.disabled });
-});
-
-app.put('/api/reviews/:reviewId/hidden', adminAuth, (req, res) => {
-  const { reviewId } = req.params;
-  const review = db.get(`reviews.${reviewId}`).value();
-
-  if (!review) {
-      return res.status(404).send('Review not found.');
-  }
-
-  // Toggle the hidden status
-  review.hidden = !review.hidden;
-  db.set(`reviews.${reviewId}`, review).write();
-
-  res.send({ message: 'Review hidden status updated.', hidden: review.hidden });
-});
-
 
 
 
