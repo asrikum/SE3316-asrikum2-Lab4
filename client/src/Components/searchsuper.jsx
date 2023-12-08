@@ -257,16 +257,19 @@ function SuperheroList() {
     </div>
   );
 }
+
 function HeroLists() {
   const [lists, setLists] = useState([]);
   const [expandedList, setExpandedList] = useState(null);
+  const [displayLimit, setDisplayLimit] = useState(10);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await axios.get('http://localhost:4000/api/lists');
-        console.log("Fetched lists:", response.data); 
-        setLists(response.data); // Assuming each list item has a 'reviews' field
+        console.log("Fetched lists:", response.data);
+        const privateLists = response.data.filter(list => list.visibility === 'public');
+        setLists(privateLists);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -275,7 +278,7 @@ function HeroLists() {
     fetchData();
   }, []);
 
-  const handleExpandClick = async (listName) => {
+  const handleExpandClick = (listName) => {
     if (expandedList === listName) {
       setExpandedList(null);
     } else {
@@ -285,9 +288,9 @@ function HeroLists() {
 
   return (
     <div>
-      <h1>Public Hero Lists</h1>
+      <h1>Private Hero Lists</h1>
       <ul>
-        {lists.map(list => (
+        {lists.slice(0, displayLimit).map(list => (
           <li key={list.name}>
             <h2>{list.name}</h2>
             <button onClick={() => handleExpandClick(list.name)}>
@@ -305,7 +308,7 @@ function HeroLists() {
                     <div key={index}>
                       <p>Name: {hero.name}</p>
                       <p>Power: {hero.powers.join(', ')}</p>
-                      <p>Publisher: {hero.Publisher}</p>
+                      <p>Publisher: {hero.publisher}</p>
                     </div>
                   ))}
                 </div>
@@ -327,9 +330,98 @@ function HeroLists() {
           </li>
         ))}
       </ul>
+      {displayLimit < lists.length && (
+        <button onClick={() => setDisplayLimit(prevLimit => prevLimit + 10)}>
+          Load More
+        </button>
+      )}
     </div>
   );
 }
+
+
+
+function Private() {
+  const [lists, setLists] = useState([]);
+  const [expandedList, setExpandedList] = useState(null);
+  const [displayLimit, setDisplayLimit] = useState(20);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/lists');
+        console.log("Fetched lists:", response.data);
+        const privateLists = response.data.filter(list => list.visibility === 'public'||'private');
+        setLists(privateLists);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleExpandClick = (listName) => {
+    if (expandedList === listName) {
+      setExpandedList(null);
+    } else {
+      setExpandedList(listName);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Private Hero Lists</h1>
+      <ul>
+        {lists.slice(0, displayLimit).map(list => (
+          <li key={list.name}>
+            <h2>{list.name}</h2>
+            <button onClick={() => handleExpandClick(list.name)}>
+              {expandedList === list.name ? 'Hide Details' : 'Show Details'}
+            </button>
+            <p>Description: {list.description || 'No description available'}</p>
+            <p>Visibility: {list.visibility.charAt(0).toUpperCase() + list.visibility.slice(1)}</p>
+            <p>Number of Heroes: {list.superheroes.length}</p>
+            <p>Average Rating: {list.averageRating.toFixed(1)}</p>
+            <p>Last Modified: {new Date(list.lastModified).toLocaleDateString()}</p>
+            {expandedList === list.name && (
+              <div>
+                <div>
+                  {list.superheroes.map((hero, index) => (
+                    <div key={index}>
+                      <p>Name: {hero.name}</p>
+                      <p>Power: {hero.powers.join(', ')}</p>
+                      <p>Publisher: {hero.publisher}</p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h3>Reviews:</h3>
+                  {list.reviews && list.reviews.length > 0 ? (
+                    list.reviews.map((review, index) => (
+                      <div key={index}>
+                        <p>Rating: {review.rating}</p>
+                        <p>Comment: {review.comment}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No reviews yet.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {displayLimit < lists.length && (
+        <button onClick={() => setDisplayLimit(prevLimit => prevLimit + 10)}>
+          Load More
+        </button>
+      )}
+    </div>
+  );
+}
+
 
 
 
@@ -955,6 +1047,6 @@ const toggleReviewHiddenStatus = async () => {
   );
 };
 
-export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm, DeleteListForm, AdminDashboard};
+export { SuperheroesSearch, ListResults, SuperheroesDataComponent, SuperheroList, DisplayResults, GetAllPublishersComponent, ListForm, HeroLists, EditListForm, ReviewForm, DeleteListForm, AdminDashboard, Private};
 
 

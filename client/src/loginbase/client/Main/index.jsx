@@ -14,7 +14,8 @@ import {
     EditListForm, 
     ReviewForm, 
     DeleteListForm,
-    AdminDashboard
+    AdminDashboard,
+    Private
 } from '../../../Components/searchsuper';
 
 const Main = () => {
@@ -73,7 +74,7 @@ const Main = () => {
                     <DeleteListForm />     
                     <DisplayResults />
                     <GetAllPublishersComponent />
-                    <HeroLists />
+                    <Private />
                     </>
                 ) : (
                     <div>
