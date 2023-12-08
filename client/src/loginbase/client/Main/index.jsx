@@ -1,5 +1,7 @@
 import styles from ".";
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import React, { useEffect, useState } from "react";
+import PolicyPage from "../Admin/policy";
 import { 
     ListResults, 
     SuperheroesDataComponent, 
@@ -34,36 +36,37 @@ const Main = () => {
         localStorage.removeItem("isAdmin");
         window.location.reload();
     };
-    if (isAdmin) {
-        // If the user is an admin, only show the AdminDashboard
-        return (
+
+    const commonNavBar = () => (
+        <nav className={styles.navbar}>
+            <button className={styles.white_btn} onClick={handleLogout}>Logout</button>
+            <div></div>
+            <Link to="/apolicy" className={styles.link}>Security and Privacy Policy</Link>
+            <div></div>
+            <Link to="/policy" className={styles.link}>Acceptable User Policy</Link>
+            <div></div>
+            <Link to="/DMCA" className={styles.link}>DMCA Form</Link>
+            <div></div>
+            <Link to="/DMCATools" className={styles.link}>DMCA Tools</Link>
+            
+
+        </nav>
+    );
+
+   
+        return (  
+            
             <div>
-                <div className={styles.main_container}>
-                    <nav className={styles.navbar}>
-                        {/* Navbar content */}
-                        <button className={styles.white_btn} onClick={handleLogout}>
-                            Logout
-                        </button>
-                    </nav>
-                </div>
-                <AdminDashboard />
-            </div>
-        );
-    } else {
-    return (
-        <div>
             <div className={styles.main_container}>
-                <nav className={styles.navbar}>
-                    <h1>Superhero</h1>
-                    <h2>A site to help fans find info about their favourite heroes, as well as organizing them into stored lists</h2>
-                    <button className={styles.white_btn} onClick={handleLogout}>
-                        Logout
-                    </button>
-                </nav>
+                {commonNavBar()}
             </div>
-            {isVerified ? (
-                <>
-                    <SuperheroesSearch />
+                {isAdmin ? (
+                    <AdminDashboard />
+                ) : (
+                         
+                isVerified ? (
+                    <>
+                          <SuperheroesSearch />
                     <ListForm />
                     <EditListForm />
                     <ReviewForm />
@@ -71,20 +74,20 @@ const Main = () => {
                     <DisplayResults />
                     <GetAllPublishersComponent />
                     <HeroLists />
-                    
-                </>
-            ) : (
-                <div>
-                    <p>Your email is not verified. Please verify to access all features.</p>
-                    <SuperheroesSearch />
+                    </>
+                ) : (
+                    <div>
+                        <p>Your email is not verified. Please verify to access all features.</p>
+                        <SuperheroesSearch />
                     <HeroLists />
-                </div>
-            )}
+                    </div>
 
+                )
+                )}
+            </div>
             
-        </div>
-    );
-};
-}
+        );
+    }
+
 
 export default Main;

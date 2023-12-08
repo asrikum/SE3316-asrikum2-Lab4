@@ -477,10 +477,17 @@ app.get('/api/lists', async (req, res) => {
       // Fetch reviews for each specific list
       const listReviews = Object.values(reviews).filter(review => review.listName === listName);
 
+      
+
       let superheroDetails = [];
       if (listData.superheroes && Array.isArray(listData.superheroes)) {
         superheroDetails = listData.superheroes.map(heroId => {
           const superhero = superhero_pub.find(sh => sh.id === heroId);
+          if (superhero) {
+            const superheropowers = superheroes.find(sh => sh.hero_names === superhero.name);
+            const powers = superheropowers ? Object.entries(superheropowers)
+              .filter(([key, value]) => value === "True" && key !== "hero_names")
+              .map(([key]) => key) : [];
           return superhero ? {
             id: heroId,
             name: superhero.name,
@@ -493,10 +500,12 @@ app.get('/api/lists', async (req, res) => {
             Skin: superhero["Skin color"],
             Alignment: superhero.Alignment,
             Weight: superhero.Weight,
-            powers: superhero.powers || [],
+            powers: powers || [],
           } : null;
-        }).filter(hero => hero !== null);
+        }
+      }).filter(hero => hero !== null);
       }
+      
 
       const averageRating = listData.ratings && listData.ratings.length > 0 
                             ? listData.ratings.reduce((a, b) => a + b, 0) / listData.ratings.length 
@@ -592,6 +601,69 @@ app.delete('/api/lists/:listName', (req, res) => {
     res.status(500).send('Server error');
   }
 });
+
+
+app.post('/api/policy', (req, res) => {
+  // Predefined content of the policy
+  const policyContent = `Security and Privacy Policy
+
+  Last Updated: [Insert the last update date here]
+
+  Welcome to [Insert your website/application name here]. At [Insert your company name here], we are committed to protecting the security and privacy of our users. This Security and Privacy Policy outlines our practices regarding the collection, use, storage, and protection of your personal information.
+
+  1. Information Collection
+
+  We collect information to provide better services to all our users. This includes:
+
+  - Personal Information: Such as your name, email address, and telephone number, which you provide when you register on our site or application.
+  - Usage Information: Information about your interactions with our site or application, including the pages you visit and the services you use.
+  - Device Information: We may collect specific information about your device, such as the hardware model and operating system.
+
+  2. Use of Information
+
+  We use the information we collect to:
+
+  - Operate, maintain, and improve our services.
+  - Understand and analyze how you use our services and what products and services are most relevant to you.
+  - Communicate with you, either directly or through one of our partners, for customer service, to provide you with updates and other information relating to the website, and for marketing and promotional purposes.
+  - Detect and address technical issues and prevent fraud or abuse of our services.
+
+  3. Sharing of Information
+
+  We do not share personal information with companies, organizations, or individuals outside of [Your Company Name] except in the following cases:
+
+  - With your consent.
+  - For external processing: We provide personal information to our affiliates or other trusted businesses or persons to process it for us, based on our instructions and in compliance with our Privacy Policy and any other appropriate confidentiality and security measures.
+  - For legal reasons: We will share personal information with companies, organizations, or individuals outside of [Your Company Name] if we have a good-faith belief that access, use, preservation, or disclosure of the information is reasonably necessary.
+
+  4. Security of Data
+
+  We take the security of your data very seriously and work hard to protect your information from unauthorized access, alteration, disclosure, or destruction. We implement several layers of security measures, including encryption and authentication tools.
+
+  5. Changes to This Policy
+
+  We may update our Security and Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last Updated" date.
+
+  6. Contact Us
+
+  If you have any questions about this Security and Privacy Policy, please contact us at [Insert your contact information here].`;
+
+  // Create or update the policy in the database
+  db.set('policy.content', policyContent).write();
+
+  res.status(201).send({ message: 'Policy created successfully' });
+});
+
+
+app.put('/api/policy', (req, res) => {
+  const { content } = req.body;
+
+  // Update the policy
+  db.set('policy.content', content).write();
+
+  res.status(200).send({ message: 'Policy updated successfully' });
+});
+
 
 
 

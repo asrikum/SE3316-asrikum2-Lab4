@@ -123001,11 +123001,14 @@
       "superheroes": [
         1,
         2,
-        3
+        4,
+        5,
+        6
       ],
-      "description": "looks its poop smoke",
+      "description": "Looolll",
       "visibility": "private",
-      "nickname": ""
+      "nickname": "",
+      "lastModified": "2023-12-08T03:33:54.886Z"
     }
   },
   "reviews": {
@@ -123043,5 +123046,8 @@
     "hahapain": "2023-12-04T20:29:04.820Z",
     "ashhh": "2023-12-05T14:27:48.871Z",
     "hmmmm": "2023-12-05T18:19:47.199Z"
+  },
+  "policy": {
+    "content": "Security and Privacy Policy"
   }
 }
