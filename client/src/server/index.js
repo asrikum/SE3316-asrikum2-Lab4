@@ -775,24 +775,7 @@ async function promoteUserToAdmin(userId) {
 
 
 
-router.put('/users/:userId/promote-to-admin', adminAuth, async (req, res) => {
-  try {
-      const userId = req.params.userId;
-      console.log("Attempting to promote user with ID:", userId); // Log for debugging
 
-      const updatedUser = await promoteUserToAdmin(userId);
-
-      if (!updatedUser) {
-          console.log("User not found or invalid userId format for ID:", userId); // Log for debugging
-          return res.status(404).send('User not found or invalid userId.');
-      }
-
-      res.send({ message: 'User successfully promoted to admin.', user: updatedUser });
-  } catch (error) {
-      console.error('Error in promoting user:', error);
-      res.status(500).send('Internal server error');
-  }
-});
 
 
 

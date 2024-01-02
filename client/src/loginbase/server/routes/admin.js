@@ -79,7 +79,7 @@ async function promoteUserToAdmin(userId) {
             { returnDocument: 'after' }
         );
 
-        if (!result.value) {
+        if (!result) {
             console.log("No user found with ID:", userObjectId);
             return null;
         }
@@ -97,13 +97,14 @@ router.put('/users/:userId/promote-to-admin', adminAuth, async (req, res) => {
         const userId = req.params.userId;
         
         // Call the function to promote the user
-        const updatedUser = await promoteUserToAdmin(userId);
+        const updatedUser = promoteUserToAdmin(userId);
 
         if (!updatedUser) {
             return res.status(404).send('User not found.');
         }
 
         res.send({ message: 'User successfully promoted to admin.', user: updatedUser });
+        res.status(200).json({ message: 'Admin status updated successfully' });
     } catch (error) {
         console.error('Error in promoting user:', error);
         res.status(500).send('Internal server error');
@@ -138,8 +139,8 @@ async function disableuser(userId) {
             { returnDocument: 'after' }
         );
 
-        if (!result.value) {
-            console.log("No user found with ID:", userObjectId);
+        if (!result) {
+            console.log("No username found with ID:", userObjectId);
             return null;
         }
 
@@ -156,7 +157,7 @@ router.put('/users/:userId/disable', adminAuth, async (req, res) => {
         const userId = req.params.userId;
         
         // Call the function to promote the user
-        const updatedUser = await disableuser(userId);
+        const updatedUser = disableuser(userId);
 
         if (!updatedUser) {
             return res.status(404).send('User not found.');

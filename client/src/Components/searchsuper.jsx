@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 import './LoginSignup.css'
 import axios from 'axios';
+import { Await } from 'react-router-dom';
 function sanitizeString(str) {
   return str.trim().replace(/[&<>"'/]/g, function (match) {
     return ({
@@ -933,11 +934,13 @@ const toggleManagerStatus = async () => {
       await axios.put(`http://localhost:4000/admin/users/${selectedUserId}/promote-to-admin`, {}, config);
       setUsers(users.map(user => user._id === selectedUserId ? { ...user, isManager: !user.isManager } : user));
       setLoading(false);
+    
   } catch (error) {
-      console.error("Error updating Admin status", error);
+      alert("Error updating Admin status", error);
       setError('Failed to update Admin status');
       setLoading(false);
   }
+  alert("Admin changed Successfully!");
 };
 
 
@@ -965,6 +968,7 @@ const toggleDisableStatus = async () => {
       setError('Failed to update disabled status');
       setLoading(false);
   }
+  alert("Disabled User Successfully!");
 };
 
 const handleAdminReview = (event) => {
@@ -982,6 +986,7 @@ const fetchReviews = async () => {
       setError('Error fetching reviews');
       setLoading(false);
   }
+  
 };
 
 
@@ -1003,6 +1008,7 @@ const toggleReviewHiddenStatus = async () => {
   } catch (error) {
       console.error('Error updating review hidden status', error);
   }
+  alert("Hidden Reviews Successfully!");
 };
   return (
       <div>
